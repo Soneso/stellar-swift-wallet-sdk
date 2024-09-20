@@ -5,10 +5,9 @@
 //  Created by Christian Rogobete on 19.09.24.
 //
 
-import Foundation
 import stellarsdk
 
-public class StellarConfig: NSObject {
+public class StellarConfig {
  
     /**
         Network to be used.
