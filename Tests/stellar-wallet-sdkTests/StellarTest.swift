@@ -83,5 +83,72 @@ final class StellarTest: XCTestCase {
         XCTAssertEqual(Double(balances.first!.balance), 0.0)
     }
     
+    func testLockMasterKey() async throws {
+        let stellar = wallet.stellar
+        let account = stellar.account
+        
+        // keypairs & account id
+        let newAccountSigningKeyPair = account.createKeyPair()
+        let newAccountPublicKeyPair = newAccountSigningKeyPair.toPublicKeyPair()
+        let newAccountAddress = newAccountPublicKeyPair.address
+        
+        // fund the new test account
+        try await stellar.fundTestNetAccount(address: newAccountAddress)
+        
+        // create transaction
+        let tx = try await stellar.transaction(sourceAddress:newAccountPublicKeyPair).lockAccountMasterKey().build()
+        
+        // sign transaction
+        stellar.sign(tx: tx, keyPair: newAccountSigningKeyPair)
+        
+        // submit transaction
+        let success = try await stellar.submitTransaction(signedTransaction: tx)
+        XCTAssertTrue(success)
+        
+        // validate
+        let newAccount = try await account.getInfo(accountAddress: newAccountAddress)
+        let signers = newAccount.signers
+        
+        XCTAssertEqual(1, signers.count)
+        XCTAssertEqual(0, signers.first!.weight)
+    }
+    
+    func testSponsoredLockMasterKey() async throws {
+        let stellar = wallet.stellar
+        let account = stellar.account
+        
+        let sponsorKeyPair = accountKeyPair
+        
+        // create transaction builder
+        let txBuilder = try await stellar.transaction(sourceAddress: sponsorKeyPair)
+        
+        // keypairs identifying the new account to be locked
+        let newAccountSigningKeyPair = account.createKeyPair()
+        let newAccountPublicKeyPair = newAccountSigningKeyPair.toPublicKeyPair()
+        let newAccountAddress = newAccountPublicKeyPair.address
+        
+        // fund the new test account
+        try await stellar.fundTestNetAccount(address: newAccountAddress)
+        
+        // create transaction
+        let tx = try txBuilder.sponsoring(sponsorAccount: sponsorKeyPair,
+                                      buildingFunction: { (builder) in builder.lockAccountMasterKey()},
+                                      sponsoredAccount: newAccountPublicKeyPair).build()
+        
+        // sign transaction
+        stellar.sign(tx: tx, keyPair: accountKeyPair)
+        stellar.sign(tx: tx, keyPair: newAccountSigningKeyPair)
+        
+        // submit transaction
+        let success = try await stellar.submitTransaction(signedTransaction: tx)
+        XCTAssertTrue(success)
+        
+        // validate
+        let newAccount = try await account.getInfo(accountAddress: newAccountAddress)
+        let signers = newAccount.signers
+        
+        XCTAssertEqual(1, signers.count)
+        XCTAssertEqual(0, signers.first!.weight)
+    }
     
 }

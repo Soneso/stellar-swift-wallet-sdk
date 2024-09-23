@@ -8,7 +8,7 @@
 import Foundation
 import stellarsdk
 
-public class CommonTxBuilder<T> {
+public class CommonTxBuilder {
     var sourceAccount:TransactionAccount
     var operations:[stellarsdk.Operation]
     var memo:stellarsdk.Memo?
@@ -20,7 +20,7 @@ public class CommonTxBuilder<T> {
         self.operations = operations
     }
     
-    func addAccountSigner(signerAddress:AccountKeyPair, signerWeight:UInt32) -> CommonTxBuilder<T> {
+    func addAccountSigner(signerAddress:AccountKeyPair, signerWeight:UInt32) {
         let accSignerKey =  try! Signer.ed25519PublicKey(accountId: signerAddress.address)
         
         let op = try! SetOptionsOperation(
@@ -29,31 +29,30 @@ public class CommonTxBuilder<T> {
             signerWeight: signerWeight)
         
         operations.append(op)
-        
-        return self
     }
     
-    func removeAccountSigner(signerAddress:AccountKeyPair) throws -> CommonTxBuilder<T> {
+    func removeAccountSigner(signerAddress:AccountKeyPair) throws {
         if (signerAddress.address == sourceAccount.keyPair.accountId) {
             throw ValidationError.invalidArgument(
                 message: "This method can't be used to remove master signer key, call the lockAccountMasterKey method instead")
         }
         
-        return addAccountSigner(signerAddress: signerAddress, signerWeight: 0)
+        addAccountSigner(signerAddress: signerAddress, signerWeight: 0)
     }
     
-    func lockAccountMasterKey() -> CommonTxBuilder {
+    /// Lock the master key of the account (set its weight to 0). Use caution when locking account's
+    /// master key. Make sure you have set the correct signers and weights. Otherwise, you might lock
+    /// the account irreversibly.
+    func lockAccountMasterKey() {
         
         let op = try! SetOptionsOperation(
             sourceAccountId: sourceAccount.keyPair.accountId,
             masterKeyWeight: 0)
         
         operations.append(op)
-        
-        return self
     }
     
-    func addAssetSupport(asset:IssuedAssetId, limit:Decimal?) -> CommonTxBuilder<T> {
+    func addAssetSupport(asset:IssuedAssetId, limit:Decimal?) {
         let asset = ChangeTrustAsset(canonicalForm: asset.id)!
         let op = ChangeTrustOperation(
             sourceAccountId: sourceAccount.keyPair.accountId,
@@ -61,11 +60,9 @@ public class CommonTxBuilder<T> {
             limit: limit ?? Decimal(922337203685.4775807))
         
         operations.append(op)
-        
-        return self
     }
     
-    func removeAssetSupport(asset:IssuedAssetId) -> CommonTxBuilder<T> {
+    func removeAssetSupport(asset:IssuedAssetId) {
         let asset = ChangeTrustAsset(canonicalForm: asset.id)!
         let op = ChangeTrustOperation(
             sourceAccountId: sourceAccount.keyPair.accountId,
@@ -73,11 +70,9 @@ public class CommonTxBuilder<T> {
             limit: Decimal(0))
         
         operations.append(op)
-        
-        return self
     }
     
-    func setThreshold(low:UInt32, medium:UInt32, high:UInt32) -> CommonTxBuilder<T> {
+    func setThreshold(low:UInt32, medium:UInt32, high:UInt32) {
         let op = try! SetOptionsOperation(
             sourceAccountId: sourceAccount.keyPair.accountId,
             lowThreshold: low,
@@ -85,8 +80,6 @@ public class CommonTxBuilder<T> {
             highThreshold: high)
         
         operations.append(op)
-        
-        return self
     }
 
     func build() throws ->stellarsdk.Transaction
@@ -112,7 +105,7 @@ public class CommonTxBuilder<T> {
 ///  
 /// - Important: Do not create this object directly, use the Stellar class to create a transaction.
 ///
-public class TxBuilder:CommonTxBuilder<TxBuilder> {
+public class TxBuilder:CommonTxBuilder {
 
     /// Creates a new instance of the TransactionBuilder class for constructing Stellar transactions.
     ///
@@ -172,6 +165,14 @@ public class TxBuilder:CommonTxBuilder<TxBuilder> {
         
         operations.append(op)
         
+        return self
+    }
+    
+    /// Lock the master key of the account (set its weight to 0). Use caution when locking account's
+    /// master key. Make sure you have set the correct signers and weights. Otherwise, you might lock
+    /// the account irreversibly.
+    func lockAccountMasterKey() -> TxBuilder {
+        super.lockAccountMasterKey()
         return self
     }
     
@@ -241,7 +242,7 @@ public class TxBuilder:CommonTxBuilder<TxBuilder> {
 
 }
 
-public class SponsoringBuilder:CommonTxBuilder<SponsoringBuilder> {
+public class SponsoringBuilder:CommonTxBuilder {
 
     var sponsorAccount:AccountKeyPair
     
@@ -262,6 +263,14 @@ public class SponsoringBuilder:CommonTxBuilder<SponsoringBuilder> {
         
         operations.append(op)
         
+        return self
+    }
+    
+    /// Lock the master key of the account (set its weight to 0). Use caution when locking account's
+    /// master key. Make sure you have set the correct signers and weights. Otherwise, you might lock
+    /// the account irreversibly.
+    func lockAccountMasterKey() -> SponsoringBuilder {
+        super.lockAccountMasterKey()
         return self
     }
     
