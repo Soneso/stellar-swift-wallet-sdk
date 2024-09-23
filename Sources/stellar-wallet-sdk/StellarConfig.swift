@@ -23,17 +23,17 @@ public class StellarConfig {
      Default [base fee](https://developers.stellar.org/docs/encyclopedia/fees-surge-pricing-fee-strategies#network-fees-on-stellar)
      to be used
      */
-    public var maxOperationFee:UInt32 = 100
+    public var baseFee:UInt32 = 100
     
     /**
      Default transaction timeout in seconds
      */
-    public var defaultTimeout:UInt32 = 120
+    public var defaultTimeout:UInt32 = 300
     
-    public init(network: Network, horizonUrl:String, maxOperationFee:UInt32 = 100, defaultTimeout:UInt32 = 100) {
+    public init(network: Network, horizonUrl:String, baseFee:UInt32 = 100, defaultTimeout:UInt32 = 100) {
         self.network = network
         self.horizonUrl = horizonUrl
-        self.maxOperationFee = maxOperationFee
+        self.baseFee = baseFee
         self.defaultTimeout = defaultTimeout
     }
     

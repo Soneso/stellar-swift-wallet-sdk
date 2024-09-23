@@ -56,7 +56,7 @@ public class IssuedAssetId: StellarAssetId {
             throw ValidationError.invalidArgument(message: "invalid issued asset code: \(code)")
         }
         do {
-            let kp = try KeyPair(accountId: issuer)
+            let _ = try KeyPair(accountId: issuer)
         } catch {
             throw ValidationError.invalidArgument(message: "invalid issued asset issuer (account id): \(issuer)")
         }

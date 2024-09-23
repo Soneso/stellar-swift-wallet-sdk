@@ -29,11 +29,11 @@ public class AccountService {
         let sdk = StellarSDK(withHorizonUrl: horizonUrl)
         let resultEnum = await sdk.accounts.getAccountDetails(accountId: accountAddress)
         switch resultEnum {
-        case .success(let details):
+        case .success(_):
             return true
         case .failure(let error):
             switch error {
-            case .notFound(let message, let horizonErrorResponse):
+            case .notFound(_,_):
                 return false
             default:
                 throw error

@@ -108,28 +108,59 @@ public class CommonTxBuilder<T> {
     }
 }
 
-
+/// Used for building transactions.
+///  
+/// - Important: Do not create this object directly, use the Stellar class to create a transaction.
+///
 public class TxBuilder:CommonTxBuilder<TxBuilder> {
 
+    /// Creates a new instance of the TransactionBuilder class for constructing Stellar transactions.
+    ///
+    /// - Parameter sourceAccount: The source account for the transaction.
+    ///
     public init(sourceAccount:TransactionAccount) {
         super.init(sourceAccount: sourceAccount, operations: [])
     }
     
+    /// Add a memo for the transaction.
+    /// Returns the TxBuilder instance for chaining.
+    ///
+    /// - Parameter memo: The memo to add to the transaction.
+    ///
     func setMemo(memo:stellarsdk.Memo) -> TxBuilder  {
         self.memo = memo
         return self
     }
     
+    /// Adds timebounds to the transaction
+    /// Returns the TxBuilder instance for chaining.
+    ///
+    /// - Parameter timebounds: The timebounds to add to the transaction.
+    ///
     func setTimebounds(timebounds:stellarsdk.TimeBounds) -> TxBuilder  {
         self.timebounds = timebounds
         return self
     }
     
+    /// Sets the maximum fee to be payed per operation contained in the transaction.
+    /// Returns the TxBuilder instance for chaining.
+    ///
+    /// - Parameter baseFeeInStoops: The base fee in stoops (smallest stellar lumen units). Default is 100
+    ///
     func setBaseFee(baseFeeInStoops:UInt32) -> TxBuilder  {
         self.baseFee = baseFeeInStoops
         return self
     }
     
+    /// Creates a Stellar account.
+    /// Returns the TxBuilder instance for chaining.
+    ///
+    /// This function throws a validation error (ValidationError.invalidArgument) if the given starting balance is smaller than 1 XLM.
+    ///
+    /// - Parameters:
+    ///   - newAccount: The new account's keypair.
+    ///   - startingBalance: The starting balance for the new account (default is 1 XLM).
+    ///   
     public func createAccount(newAccount:AccountKeyPair, startingBalance:Decimal = Decimal(1)) throws -> TxBuilder {
         if (startingBalance < Decimal(1)) {
             throw ValidationError.invalidArgument(message: "Starting balance must be at least 1 XLM for non-sponsored accounts")
@@ -144,6 +175,17 @@ public class TxBuilder:CommonTxBuilder<TxBuilder> {
         return self
     }
     
+    /// Adds a payment operation to transfer an amount of an asset to a destination address.
+    /// Returns the TxBuilder instance for chaining.
+    ///
+    /// This function throws a validation error (ValidationError.invalidArgument) if the given amount is smaller or equal 0 XLM
+    /// or if the given destination address is not a valid account public key (account id).
+    ///
+    /// - Parameters:
+    ///   - destinationAddress: The destination account's public key.
+    ///   - assetId: The asset to transfer.
+    ///   - amount: The amount to transfer.
+    ///
     public func transfer(destinationAddress:String, assetId:StellarAssetId, amount:Decimal) throws -> TxBuilder {
         if (amount <= Decimal(0)) {
             throw ValidationError.invalidArgument(message: "Can not transfer amount 0 or less")
@@ -164,19 +206,32 @@ public class TxBuilder:CommonTxBuilder<TxBuilder> {
         return self
     }
     
+    /// Adds an operation to the transaction.
+    /// Returns the TxBuilder instance for chaining.
+    ///
+    /// - Parameter operation: The operation to add to the transaction.
+    ///
     public func addOperation(operation:stellarsdk.Operation) -> TxBuilder {
         operations.append(operation)
         return self
     }
-    
-    public func sponsoring(sponsorAccount:AccountKeyPair, using buildingFunction:(_:SponsoringBuilder) -> Void, sponsoredAccount:AccountKeyPair?) -> TxBuilder {
+
+    /// Sponsoring a transaction.
+    /// Returns the TxBuilder instance for chaining.
+    ///
+    /// - Parameters:
+    ///   - sponsorAccount: The account doing the sponsoring.
+    ///   - buildingFunction: Function for creating the operations that will be sponsored.
+    ///   - sponsoredAccount: The account that will be sponsored.
+    ///
+    public func sponsoring(sponsorAccount:AccountKeyPair, buildingFunction:(_:SponsoringBuilder) -> SponsoringBuilder, sponsoredAccount:AccountKeyPair?) -> TxBuilder {
         let sponsoredAccountKp = sponsoredAccount?.keyPair ?? sourceAccount.keyPair
         let beginSponsorshipOp = BeginSponsoringFutureReservesOperation(sponsoredAccountId: sponsoredAccountKp.accountId, sponsoringAccountId: sponsorAccount.address)
         operations.append(beginSponsorshipOp)
         
         let builderAccount = Account(keyPair: sponsoredAccountKp, sequenceNumber: 0)
-        let opBuilder = SponsoringBuilder(sourceAccount: builderAccount, sponsorAccount: sponsorAccount)
-        buildingFunction(opBuilder)
+        var opBuilder = SponsoringBuilder(sourceAccount: builderAccount, sponsorAccount: sponsorAccount)
+        opBuilder = buildingFunction(opBuilder)
         operations.append(contentsOf: opBuilder.operations)
         
         let endSponsoringOp = EndSponsoringFutureReservesOperation(sponsoredAccountId: sponsoredAccountKp.accountId)
@@ -195,14 +250,15 @@ public class SponsoringBuilder:CommonTxBuilder<SponsoringBuilder> {
         super.init(sourceAccount: sourceAccount, operations: [])
     }
     
-    public func createAccount(newAccount:AccountKeyPair, startingBalance:Decimal = Decimal(0)) throws -> SponsoringBuilder {
-        if (startingBalance < Decimal(0)) {
-            throw ValidationError.invalidArgument(message: "Starting balance must be at least 0 XLM for sponsored accounts")
+    public func createAccount(newAccount:AccountKeyPair, startingBalance:Decimal = Decimal(0)) -> SponsoringBuilder {
+        var txStartingBalance = startingBalance
+        if (txStartingBalance < Decimal(0)) {
+            txStartingBalance = Decimal(0)
         }
         let op = CreateAccountOperation(
-            sourceAccountId: sourceAccount.keyPair.accountId,
+            sourceAccountId: sponsorAccount.address,
             destination: newAccount.keyPair,
-            startBalance: startingBalance)
+            startBalance: txStartingBalance)
         
         operations.append(op)
         
