@@ -19,10 +19,36 @@ public class CommonTxBuilder {
         self.sourceAccount = sourceAccount
         self.operations = operations
     }
+            
+    /// Lock the master key of the account (set its weight to 0). Use caution when locking account's
+    /// master key. Make sure you have set the correct signers and weights. Otherwise, you might lock
+    /// the account irreversibly.
+    fileprivate func lockAccountMasterKey() {
+        
+        // This only throws if only one of signer and signerWeight is passed.
+        // Here we provide non of both, so it will not throw.
+        let op = try! SetOptionsOperation(
+            sourceAccountId: sourceAccount.keyPair.accountId,
+            masterKeyWeight: 0)
+        
+        operations.append(op)
+    }
     
-    func addAccountSigner(signerAddress:AccountKeyPair, signerWeight:UInt32) {
+    /// Add new signer to the account. Use caution when adding new signers, make sure you set the
+    /// correct signer weight. Otherwise, you might lock the account irreversibly.
+    ///
+    /// - Parameters:
+    ///   - signerAddress: Stellar address of the signer that is added
+    ///   - signerWeight: Signer weight
+    ///
+    fileprivate func addAccountSigner(signerAddress:AccountKeyPair, signerWeight:UInt32) {
+        
+        // This will only throw on invalid address. But since the address is from
+        // the key pair it can not be invalid.
         let accSignerKey =  try! Signer.ed25519PublicKey(accountId: signerAddress.address)
         
+        // This only throws if only one of signer and signerWeight is passed.
+        // But here we provide both, so it will not throw.
         let op = try! SetOptionsOperation(
             sourceAccountId: sourceAccount.keyPair.accountId,
             signer: accSignerKey,
@@ -31,7 +57,14 @@ public class CommonTxBuilder {
         operations.append(op)
     }
     
-    func removeAccountSigner(signerAddress:AccountKeyPair) throws {
+    /// Remove signer from the account.
+    ///
+    ///  Throws `ValidationError.invalidArgument` if you try to remove the account master key.
+    ///  Use `lockAccountMasterKey` instead.
+    ///
+    ///  - Parameter signerAddress: Stellar address of the signer to be  removed
+    ///
+    fileprivate func removeAccountSigner(signerAddress:AccountKeyPair) throws {
         if (signerAddress.address == sourceAccount.keyPair.accountId) {
             throw ValidationError.invalidArgument(
                 message: "This method can't be used to remove master signer key, call the lockAccountMasterKey method instead")
@@ -40,19 +73,7 @@ public class CommonTxBuilder {
         addAccountSigner(signerAddress: signerAddress, signerWeight: 0)
     }
     
-    /// Lock the master key of the account (set its weight to 0). Use caution when locking account's
-    /// master key. Make sure you have set the correct signers and weights. Otherwise, you might lock
-    /// the account irreversibly.
-    func lockAccountMasterKey() {
-        
-        let op = try! SetOptionsOperation(
-            sourceAccountId: sourceAccount.keyPair.accountId,
-            masterKeyWeight: 0)
-        
-        operations.append(op)
-    }
-    
-    func addAssetSupport(asset:IssuedAssetId, limit:Decimal?) {
+    fileprivate func addAssetSupport(asset:IssuedAssetId, limit:Decimal?) {
         let asset = ChangeTrustAsset(canonicalForm: asset.id)!
         let op = ChangeTrustOperation(
             sourceAccountId: sourceAccount.keyPair.accountId,
@@ -62,7 +83,7 @@ public class CommonTxBuilder {
         operations.append(op)
     }
     
-    func removeAssetSupport(asset:IssuedAssetId) {
+    fileprivate func removeAssetSupport(asset:IssuedAssetId) {
         let asset = ChangeTrustAsset(canonicalForm: asset.id)!
         let op = ChangeTrustOperation(
             sourceAccountId: sourceAccount.keyPair.accountId,
@@ -72,7 +93,7 @@ public class CommonTxBuilder {
         operations.append(op)
     }
     
-    func setThreshold(low:UInt32, medium:UInt32, high:UInt32) {
+    fileprivate func setThreshold(low:UInt32, medium:UInt32, high:UInt32) {
         let op = try! SetOptionsOperation(
             sourceAccountId: sourceAccount.keyPair.accountId,
             lowThreshold: low,
@@ -176,6 +197,30 @@ public class TxBuilder:CommonTxBuilder {
         return self
     }
     
+    /// Add new signer to the account. Use caution when adding new signers, make sure you set the
+    /// correct signer weight. Otherwise, you might lock the account irreversibly.
+    ///
+    /// - Parameters:
+    ///   - signerAddress: Stellar address of the signer that is added
+    ///   - signerWeight: Signer weight
+    ///
+    func addAccountSigner(signerAddress:AccountKeyPair, signerWeight:UInt32) -> TxBuilder {
+        super.addAccountSigner(signerAddress: signerAddress, signerWeight: signerWeight)
+        return self
+    }
+    
+    /// Remove signer from the account.
+    ///
+    ///  Throws `ValidationError.invalidArgument` if you try to remove the account master key.
+    ///  Use `lockAccountMasterKey` instead.
+    ///
+    ///  - Parameter signerAddress: Stellar address of the signer to be  removed
+    ///
+    func removeAccountSigner(signerAddress:AccountKeyPair) throws  -> TxBuilder {
+        try super.removeAccountSigner(signerAddress: signerAddress)
+        return self
+    }
+    
     /// Adds a payment operation to transfer an amount of an asset to a destination address.
     /// Returns the TxBuilder instance for chaining.
     ///
@@ -271,6 +316,30 @@ public class SponsoringBuilder:CommonTxBuilder {
     /// the account irreversibly.
     func lockAccountMasterKey() -> SponsoringBuilder {
         super.lockAccountMasterKey()
+        return self
+    }
+    
+    /// Add new signer to the account. Use caution when adding new signers, make sure you set the
+    /// correct signer weight. Otherwise, you might lock the account irreversibly.
+    ///
+    /// - Parameters:
+    ///   - signerAddress: Stellar address of the signer that is added
+    ///   - signerWeight: Signer weight
+    ///
+    func addAccountSigner(signerAddress:AccountKeyPair, signerWeight:UInt32) -> SponsoringBuilder {
+        super.addAccountSigner(signerAddress: signerAddress, signerWeight: signerWeight)
+        return self
+    }
+    
+    /// Remove signer from the account.
+    ///
+    ///  Throws `ValidationError.invalidArgument` if you try to remove the account master key.
+    ///  Use `lockAccountMasterKey` instead.
+    ///
+    ///  - Parameter signerAddress: Stellar address of the signer to be  removed
+    ///
+    func removeAccountSigner(signerAddress:AccountKeyPair) throws  -> SponsoringBuilder {
+        try super.removeAccountSigner(signerAddress: signerAddress)
         return self
     }
     

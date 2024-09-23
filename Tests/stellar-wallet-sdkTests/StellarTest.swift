@@ -43,8 +43,8 @@ final class StellarTest: XCTestCase {
         XCTAssertTrue(success)
         
         // validate
-        let newAccount = try await stellar.account.getInfo(accountAddress: newAccountKeyPair.address)
-        let balances = newAccount.balances
+        let accountInfo = try await stellar.account.getInfo(accountAddress: newAccountKeyPair.address)
+        let balances = accountInfo.balances
         XCTAssertEqual(1, balances.count)
         XCTAssertEqual("native", balances.first!.assetType)
         XCTAssertEqual(Double(balances.first!.balance), 100.1)
@@ -76,8 +76,8 @@ final class StellarTest: XCTestCase {
         XCTAssertTrue(success)
         
         // validate
-        let newAccount = try await account.getInfo(accountAddress: newAccountKeyPair.address)
-        let balances = newAccount.balances
+        let accountInfo = try await account.getInfo(accountAddress: newAccountKeyPair.address)
+        let balances = accountInfo.balances
         XCTAssertEqual(1, balances.count)
         XCTAssertEqual("native", balances.first!.assetType)
         XCTAssertEqual(Double(balances.first!.balance), 0.0)
@@ -106,8 +106,8 @@ final class StellarTest: XCTestCase {
         XCTAssertTrue(success)
         
         // validate
-        let newAccount = try await account.getInfo(accountAddress: newAccountAddress)
-        let signers = newAccount.signers
+        let accountInfo = try await account.getInfo(accountAddress: newAccountAddress)
+        let signers = accountInfo.signers
         
         XCTAssertEqual(1, signers.count)
         XCTAssertEqual(0, signers.first!.weight)
@@ -144,11 +144,133 @@ final class StellarTest: XCTestCase {
         XCTAssertTrue(success)
         
         // validate
-        let newAccount = try await account.getInfo(accountAddress: newAccountAddress)
-        let signers = newAccount.signers
+        let accountInfo = try await account.getInfo(accountAddress: newAccountAddress)
+        let signers = accountInfo.signers
         
         XCTAssertEqual(1, signers.count)
         XCTAssertEqual(0, signers.first!.weight)
     }
     
+    
+    func testAddAndRemoveAccountSigner() async throws {
+        let stellar = wallet.stellar
+        let account = stellar.account
+        
+        // keypairs & account id
+        let newAccountSigningKeyPair = account.createKeyPair()
+        let newAccountPublicKeyPair = newAccountSigningKeyPair.toPublicKeyPair()
+        
+        // create transaction (add signer)
+        var tx = try await stellar.transaction(sourceAddress:accountKeyPair)
+            .addAccountSigner(signerAddress: newAccountPublicKeyPair, signerWeight: 11)
+            .build()
+        
+        // sign transaction
+        stellar.sign(tx: tx, keyPair: accountKeyPair)
+        
+        // submit transaction
+        var success = try await stellar.submitTransaction(signedTransaction: tx)
+        XCTAssertTrue(success)
+        
+        // validate
+        var accountInfo = try await account.getInfo(accountAddress: accountKeyPair.address)
+        var signers = accountInfo.signers
+        
+        XCTAssertEqual(2, signers.count)
+        var signerFound = false
+        for signer in signers {
+            if (signer.weight == 11) {
+                signerFound = true
+                break
+            }
+        }
+        XCTAssertTrue(signerFound)
+        
+        // create transaction (remove signer)
+        tx = try await stellar.transaction(sourceAddress:accountKeyPair)
+            .removeAccountSigner(signerAddress: newAccountPublicKeyPair)
+            .build()
+        
+        // sign transaction
+        stellar.sign(tx: tx, keyPair: accountKeyPair)
+        
+        // submit transaction
+        success = try await stellar.submitTransaction(signedTransaction: tx)
+        XCTAssertTrue(success)
+        
+        // validate
+        accountInfo = try await account.getInfo(accountAddress: accountKeyPair.address)
+        signers = accountInfo.signers
+        XCTAssertEqual(1, signers.count)
+        XCTAssertNotEqual(11, signers.first!.weight)
+        
+    }
+    
+    func testSponsoredAddAndRemoveAccountSigner() async throws {
+        let stellar = wallet.stellar
+        let account = stellar.account
+        
+        let sponsorKeyPair = accountKeyPair
+        
+        // create transaction builder
+        let txBuilder = try await stellar.transaction(sourceAddress: sponsorKeyPair)
+        
+        // keypairs identifying the new account to be locked
+        let newAccountSigningKeyPair = account.createKeyPair()
+        let newAccountPublicKeyPair = newAccountSigningKeyPair.toPublicKeyPair()
+        let newAccountAddress = newAccountPublicKeyPair.address
+        
+        // fund the new test account
+        try await stellar.fundTestNetAccount(address: newAccountAddress)
+        
+        // public keypair of new signer
+        let newSignerPublicKeyPair = account.createKeyPair().toPublicKeyPair()
+        
+        // create sponsored transaction (add signer)
+        var tx = try txBuilder.sponsoring(sponsorAccount: sponsorKeyPair,
+                                      buildingFunction: { (builder) in builder.addAccountSigner(signerAddress: newSignerPublicKeyPair, signerWeight: 11)},
+                                      sponsoredAccount: newAccountPublicKeyPair).build()
+        
+        // sign transaction
+        stellar.sign(tx: tx, keyPair: accountKeyPair)
+        stellar.sign(tx: tx, keyPair: newAccountSigningKeyPair)
+        
+        // submit transaction
+        var success = try await stellar.submitTransaction(signedTransaction: tx)
+        XCTAssertTrue(success)
+        
+        // validate
+        var newAccountInfo = try await account.getInfo(accountAddress: newAccountAddress)
+        var signers = newAccountInfo.signers
+        
+        XCTAssertEqual(2, signers.count)
+        var signerFound = false
+        for signer in signers {
+            if (signer.weight == 11) {
+                signerFound = true
+                break
+            }
+        }
+        XCTAssertTrue(signerFound)
+        
+        // create sponsored transaction (remove signer)
+        tx = try txBuilder.sponsoring(sponsorAccount: sponsorKeyPair,
+                                      buildingFunction: { (builder) in try! builder.removeAccountSigner(signerAddress: newSignerPublicKeyPair)},
+                                      sponsoredAccount: newAccountPublicKeyPair).build()
+        
+        // sign transaction
+        stellar.sign(tx: tx, keyPair: accountKeyPair)
+        stellar.sign(tx: tx, keyPair: newAccountSigningKeyPair)
+        
+        // submit transaction
+        success = try await stellar.submitTransaction(signedTransaction: tx)
+        XCTAssertTrue(success)
+        
+        // validate
+        newAccountInfo = try await account.getInfo(accountAddress: newAccountAddress)
+        signers = newAccountInfo.signers
+        
+        XCTAssertEqual(1, signers.count)
+        XCTAssertNotEqual(11, signers.first!.weight)
+    }
 }
