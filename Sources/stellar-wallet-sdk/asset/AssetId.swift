@@ -13,13 +13,18 @@ public protocol AssetId {
     var sep38:String {get}
 }
 
-public protocol StellarAssetId: AssetId {
-    func toAsset() -> stellarsdk.Asset
-    func fromAsset(asset:stellarsdk.Asset) throws -> StellarAssetId
-}
-
-public extension StellarAssetId {
-    func fromAsset(asset:stellarsdk.Asset) throws -> StellarAssetId {
+public class StellarAssetId: AssetId {
+    public var id: String
+    public var scheme: String
+    public var sep38: String
+    
+    fileprivate init(id:String) {
+        self.id = id
+        self.scheme = "stellar"
+        self.sep38 = "\(self.id):\(self.scheme)"
+    }
+        
+    static func fromAsset(asset:stellarsdk.Asset) throws -> StellarAssetId {
         let type = asset.type
         switch type {
         case AssetType.ASSET_TYPE_CREDIT_ALPHANUM4, AssetType.ASSET_TYPE_CREDIT_ALPHANUM12:
@@ -34,13 +39,16 @@ public extension StellarAssetId {
             throw ValidationError.invalidArgument(message: "unknown or unsupported asset type: \(type)")
         }
     }
+    
+    public func toAsset() -> stellarsdk.Asset {
+        if (id == "native") {
+            return Asset(type:AssetType.ASSET_TYPE_NATIVE)!
+        }
+        return Asset(canonicalForm: self.id)!
+    }
 }
 
 public class IssuedAssetId: StellarAssetId {
-    
-    public var id: String
-    public var scheme: String
-    public var sep38: String
     
     public init(code:String, issuer:String) throws {
         let trimmedCode = code.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -52,30 +60,14 @@ public class IssuedAssetId: StellarAssetId {
         } catch {
             throw ValidationError.invalidArgument(message: "invalid issued asset issuer (account id): \(issuer)")
         }
-        self.id = "\(trimmedCode):\(issuer)"
-        self.scheme = "stellar"
-        self.sep38 = "\(self.id):\(self.scheme)"
-    }
-    
-    public func toAsset() -> stellarsdk.Asset {
-        return Asset(canonicalForm: self.id)!
+        super.init(id: "\(trimmedCode):\(issuer)")
     }
 }
 
 public class NativeAssetId: StellarAssetId {
     
-    public var id: String
-    public var scheme: String
-    public var sep38: String
-    
     public init() {
-        self.id = "native"
-        self.scheme = "stellar"
-        self.sep38 = "\(self.id):\(self.scheme)"
-    }
-    
-    public func toAsset() -> stellarsdk.Asset {
-        return Asset(type:AssetType.ASSET_TYPE_NATIVE)!
+        super.init(id: "native")
     }
 }
 
