@@ -60,7 +60,7 @@ final class StellarTest: XCTestCase {
         let txBuilder = try await stellar.transaction(sourceAddress: sponsorKeyPair)
         
         // keypair identifying the new account to be created
-        let newAccountKeyPair = stellar.account.createKeyPair()
+        let newAccountKeyPair = account.createKeyPair()
         
         // create transaction
         let tx = try txBuilder.sponsoring(sponsorAccount: sponsorKeyPair,
@@ -76,7 +76,7 @@ final class StellarTest: XCTestCase {
         XCTAssertTrue(success)
         
         // validate
-        let newAccount = try await stellar.account.getInfo(accountAddress: newAccountKeyPair.address)
+        let newAccount = try await account.getInfo(accountAddress: newAccountKeyPair.address)
         let balances = newAccount.balances
         XCTAssertEqual(1, balances.count)
         XCTAssertEqual("native", balances.first!.assetType)

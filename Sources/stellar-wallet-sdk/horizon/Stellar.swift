@@ -15,7 +15,7 @@ import stellarsdk
 public class Stellar {
     
     /// Configuration object.
-    public var config:Config
+    internal var config:Config
     
     /// AccountService instance for managing Stellar accounts.
     public var account:AccountService
@@ -24,7 +24,7 @@ public class Stellar {
     /// 
     /// - Parameter config: Configuration object.
     ///
-    public init(config: Config) {
+    internal init(config: Config) {
         self.config = config
         self.account = AccountService(config: config)
     }

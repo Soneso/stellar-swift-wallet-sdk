@@ -5,7 +5,8 @@
 //  Created by Christian Rogobete on 19.09.24.
 //
 
-public class Config {
+/// Internal class for passing configurations.
+internal class Config {
     public var stellar:StellarConfig
     public var app:AppConfig
     
