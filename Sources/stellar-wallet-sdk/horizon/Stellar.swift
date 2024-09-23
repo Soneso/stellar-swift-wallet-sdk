@@ -45,7 +45,7 @@ public class Stellar {
             throw ValidationError.invalidArgument(message: ("account \(destinationAccountId) requires memo"))
         case .failure(let error):
             switch error {
-            case .timeout(let message, let horizonErrorResponse):
+            case .timeout(_, _):
                 // resubmit
                 return try await submitTransaction(signedTransaction: signedTransaction)
           default:
