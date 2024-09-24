@@ -3,7 +3,7 @@
 With the Swift Wallet SDK, building an iOS Stellar-enabled wallet or application will be faster and easier than ever. The Swift Wallet SDK is currently work in progress and will extend the [Stellar Wallet SDK Family](https://stellar.org/products-and-tools/wallet-sdk).
 
 > **Note:**
-The Stellar Swift Wallet SDK is work in progress. All features that have already been implemented are documented [here](./docs/). As soon as new features are implemented, this documentation will be expanded.
+All features that have already been implemented are documented [here](https://github.com/Soneso/stellar-swift-wallet-sdk/tree/main/docs). As soon as new features are implemented, this documentation will be expanded.
 
 # Roadmap
 
@@ -109,19 +109,19 @@ Please read the [Interacting with Stellar](./docs/stellar.md) docs of the SDK to
 
 Primary use of the SDK is to provide an easy way to connect to anchors via sets of protocols known as SEPs such as:
 
-- SEP-1: Stellar Info File
-- SEP-10: Stellar Authentication
-- SEP-24: Hosted Deposit and Withdrawal
-- SEP-6: Programmatic Deposit and Withdrawal
-- SEP-12: Providing KYC info
-- SEP-38: Quotes
+- SEP-01: [Stellar Info File](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0001.md)
+- SEP-10: [Stellar Authentication](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md)
+- SEP-24: [Hosted Deposit and Withdrawal](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md)
+- SEP-06: [Programmatic Deposit and Withdrawal](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md)
+- SEP-12: [Providing KYC info](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0012.md)
+- SEP-38: [Quotes](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0038.md)
 
 This functionality is not yet implemented. We will provide all details as soon as it is ready. Stay tuned!
 
 
 #### Documentation and Test Cases
 
-You can find the SDK documentation [here](./docs/). 
+You can find the SDK documentation [here](https://github.com/Soneso/stellar-swift-wallet-sdk/tree/main/docs). 
 
 We also recommend that you consult the code examples from the test cases, e.g. in the [Stellar Tests](https://github.com/Soneso/stellar-swift-wallet-sdk/blob/main/Tests/stellar-wallet-sdkTests/StellarTest.swift) of the SDK.
 

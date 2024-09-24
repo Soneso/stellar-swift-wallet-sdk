@@ -48,7 +48,7 @@ In `AppConfig` you can configure the default behaviour across the application. C
 
 ## Next
 
-Continue with [Interacting with the Stellar Network](stellar.md).
+Continue with [Interacting with the Stellar Network](https://github.com/Soneso/stellar-swift-wallet-sdk/blob/main/docs/stellar.md).
 
 
 

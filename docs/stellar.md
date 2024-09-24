@@ -354,5 +354,5 @@ let stellarTransactions = await server.transactions.getTransactions(forAccount: 
 
 ## Next
 
-Continue with [Interactin with Anchors](anchors.md).
+Continue with [Interacting with Anchors](https://github.com/Soneso/stellar-swift-wallet-sdk/blob/main/docs/anchors.md).
 

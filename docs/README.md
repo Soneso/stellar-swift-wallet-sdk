@@ -69,4 +69,4 @@ This functionality is not yet implemented. We will provide all details as soon a
 
 ## Next
 
-Continue with [Wallet](wallet.md).
+Continue with [Wallet](https://github.com/Soneso/stellar-swift-wallet-sdk/blob/main/docs/wallet.md).
