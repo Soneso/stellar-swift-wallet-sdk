@@ -1,23 +1,18 @@
-# Swift Stellar Wallet SDK
-
 ![logo](./docs/images/wallet-sdk-logo.png)
 
-With the Swift Wallet SDK, building an iOS Stellar-enabled wallet or application will be faster and easier than ever.
+With the Swift Wallet SDK, building an iOS Stellar-enabled wallet or application will be faster and easier than ever. The Swift Wallet SDK is currently work in progress and will extend the [Stellar Wallet SDK Family](https://stellar.org/products-and-tools/wallet-sdk).
 
-The Swift Wallet SDK is currently work in progress and will extend the Stellar Wallet SDK Family.
-
-You can read more about the Stellar Wallet SDKs [here](https://stellar.org/products-and-tools/wallet-sdk).
 
 ## Roadmap
 
-### Interacting with the Stellar Network
+### 1. Interacting with the Stellar Network
 
-**Brief description:** Implementation of the predefined features and api for communication with the Stellar Network as documented [here](https://developers.stellar.org/docs/build/apps/wallet/stellar).
+**Brief description:** Implementation of the features and api needed for communication with the Stellar Network as documented [here](https://developers.stellar.org/docs/build/apps/wallet/stellar).
 
 **Status:** In progress
 
 
-### Stellar Authentication (SEP-10)
+### 2. Stellar Authentication (SEP-10)
 
 **Brief description:** Wallets connect to anchors using a standard way of authentication via the Stellar network defined by the [SEP-10](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md) standard. 
 This ilestone will contain all the components required for SEP-10 Authentication with Anchors as documented [here](https://developers.stellar.org/docs/build/apps/wallet/sep10).
@@ -32,14 +27,14 @@ This ilestone will contain all the components required for SEP-10 Authentication
 **Status:** To do
 
 
-### Quotes (SEP-38)
+### 3. Quotes (SEP-38)
 
 **Brief description:** The [SEP-38](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0038.md) standard defines a way for anchors to provide quotes for the exchange of an off-chain asset and a different on-chain asset, and vice versa. This milestone will cover the SEP-38 flow as documented [here](https://developers.stellar.org/docs/build/apps/wallet/sep38).
 
 **Status:** To do
 
 
-### KYC API (SEP-12)
+### 4. KYC API (SEP-12)
 
 **Brief description:** [SEP-12](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0012.md) defines a standard way for stellar clients to upload KYC (or other) information to anchors and other services. 
 Our SEP-6 implementation will use this protocol, but it can serve as a stand-alone service as well. This milestone will cover the SEP-12 flow as documented [here](https://developers.stellar.org/docs/build/apps/wallet/sep6#providing-kyc-info).
@@ -47,7 +42,7 @@ Our SEP-6 implementation will use this protocol, but it can serve as a stand-alo
 **Status:** To do
 
 
-### Programmatic Deposit and Withdrawal (SEP-06)
+### 5. Programmatic Deposit and Withdrawal (SEP-06)
 
 **Brief description:** The [SEP-06](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md) standard defines a way for anchors and wallets to interact on behalf of users. 
 Wallets use this standard to facilitate exchanges between on-chain assets (such as stablecoins) and off-chain assets 
@@ -56,7 +51,7 @@ Wallets use this standard to facilitate exchanges between on-chain assets (such 
 **Status:** To do
 
 
-### Recovery (SEP-30)
+### 6. Recovery (SEP-30)
 
 **Brief description:** The [SEP-30](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0030.md) standard defines the standard way for an individual 
 (e.g., a user or wallet) to regain access to their Stellar account after losing its private key without providing any third party control of the account. During this flow the wallet communicates with one or more recovery 
