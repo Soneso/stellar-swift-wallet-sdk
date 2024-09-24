@@ -66,7 +66,7 @@ public class Stellar {
     public func transaction(sourceAddress:AccountKeyPair, timeout:UInt32? = nil, baseFee: UInt32? = nil, memo:stellarsdk.Memo? = nil) async throws -> TxBuilder {
         let accountResponse = try await account.getInfo(accountAddress: sourceAddress.address)
         let txBaseFee = baseFee ?? config.stellar.baseFee
-        let txTimeout = timeout ?? config.stellar.defaultTimeout
+        let txTimeout = timeout ?? config.stellar.txTimeout
         let txTimeBounds = TimeBounds(minTime: 0, maxTime: UInt64(Date().timeIntervalSince1970 + Double(txTimeout)))
         
         var txBuilder = TxBuilder(sourceAccount: accountResponse)

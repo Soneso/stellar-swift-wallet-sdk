@@ -12,6 +12,6 @@ public class AppConfig {
     public var defaultSigner:WalletSigner = DefaultSigner()
     
     /// Default client domain
-    public var defalutClientDomain:String?
+    public var defaultClientDomain:String?
     
 }

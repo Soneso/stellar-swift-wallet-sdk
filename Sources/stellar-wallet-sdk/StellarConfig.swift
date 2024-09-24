@@ -21,13 +21,13 @@ public class StellarConfig {
     public var baseFee:UInt32 = 100
     
     /// Default transaction timeout in seconds
-    public var defaultTimeout:UInt32 = 300
+    public var txTimeout:UInt32 = 300
     
-    public init(network: Network, horizonUrl:String, baseFee:UInt32 = 100, defaultTimeout:UInt32 = 100) {
+    public init(network: Network, horizonUrl:String, baseFee:UInt32 = 100, txTimeout:UInt32 = 300) {
         self.network = network
         self.horizonUrl = horizonUrl
         self.baseFee = baseFee
-        self.defaultTimeout = defaultTimeout
+        self.txTimeout = txTimeout
     }
     
     /// Creates a new instance of `StellarConfig` for the public (main) Stellar network.
