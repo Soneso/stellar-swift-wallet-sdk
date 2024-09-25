@@ -273,4 +273,46 @@ final class StellarTest: XCTestCase {
         XCTAssertEqual(1, signers.count)
         XCTAssertNotEqual(11, signers.first!.weight)
     }
+    
+    func testAccountMerge() async throws {
+        let stellar = wallet.stellar
+        
+        // create 2 new accounts for testing and fund them
+        let sourceAccountKeyPair = stellar.account.createKeyPair()
+        let sourceAccountAddress = sourceAccountKeyPair.address
+        try await stellar.fundTestNetAccount(address: sourceAccountAddress)
+        
+        let destinationAccountKeyPair = stellar.account.createKeyPair()
+        let destinationAccountAddress = destinationAccountKeyPair.address
+        try await stellar.fundTestNetAccount(address: destinationAccountAddress)
+        
+        // create transaction builder
+        let txBuilder = try await stellar.transaction(
+            sourceAddress: accountKeyPair,
+            baseFee: 1000)
+        
+        // create transaction
+        let mergeTxn = try txBuilder.accountMerge(
+            destinationAddress: destinationAccountAddress,
+            sourceAddress: sourceAccountAddress
+        ).build()
+        
+        // sign transaction
+        stellar.sign(tx: mergeTxn, keyPair: accountKeyPair)
+        stellar.sign(tx: mergeTxn, keyPair: sourceAccountKeyPair)
+        
+        // submit transaction
+        let success = try await stellar.submitTransaction(signedTransaction: mergeTxn)
+        XCTAssertTrue(success)
+        
+        // validate
+        let sourceExists = try await stellar.account.accountExists(accountAddress: sourceAccountAddress)
+        XCTAssertFalse(sourceExists)
+        
+        let accountInfo = try await stellar.account.getInfo(accountAddress: destinationAccountAddress)
+        let balances = accountInfo.balances
+        XCTAssertEqual(1, balances.count)
+        XCTAssertEqual("native", balances.first!.assetType)
+        XCTAssertTrue(Double(balances.first!.balance)! > 10.000)
+    }
 }

@@ -16,10 +16,11 @@ let package = Package(
             targets: ["stellar-wallet-sdk"]),
     ],
     dependencies: [
-            // Dependencies declare other packages that this package depends on.
+        // Dependencies declare other packages that this package depends on.
         //.package(url: "git@github.com:Soneso/stellar-ios-mac-sdk.git", from: "2.6.6"),
         //.package(path: "../stellar-ios-mac-sdk")
-        .package(url: "git@github.com:Soneso/stellar-ios-mac-sdk.git", branch: "await-async"),
+        
+        .package(url: "git@github.com:Soneso/stellar-ios-mac-sdk.git", branch: "await-async"), // if it is not update, you can use fix_spm_cache.sh
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.

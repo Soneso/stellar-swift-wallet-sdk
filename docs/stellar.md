@@ -123,7 +123,13 @@ let tx = txBuilder.setMemo(memo: Memo.text("Memo string")).build()
 Merges account into a destination account.
 
 ```swift
-// not yet implemented
+let txBuilder = try await stellar.transaction(
+    sourceAddress: accountKp,
+    baseFee: 1000)
+    
+let mergeTxn = try txBuilder.accountMerge(
+    destinationAddress: accountKp.address,
+    sourceAddress: sourceKp.address).build()
 ```
 
 #### Fund Testnet Account
@@ -343,7 +349,6 @@ It's very simple to use the Horizon SDK connecting to the same Horizon instance 
 
 ```swift
 let server = wallet.stellar.server
-        let stellarTransaction = await server.transactions.getTransactions(forAccount: "account_id")
 ```
 
 And you can work with Horizon Server instance:

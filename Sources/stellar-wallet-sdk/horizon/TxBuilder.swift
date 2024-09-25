@@ -220,7 +220,43 @@ public class TxBuilder:CommonTxBuilder {
         try super.removeAccountSigner(signerAddress: signerAddress)
         return self
     }
-    
+
+    /// Merges an account into a destination account.
+    ///
+    /// Throws `ValidationError.invalidArgument` if any of the given addresses is invalid
+    ///
+    /// - Important: This operation will give full control of the account to the destination account,
+    /// effectively removing the merged account from the network.
+    ///
+    /// - Parameters:
+    ///   - destinationAddress: The stellar account to merge into.
+    ///   - sourceAddress: Account id of the account that is being merged. If not given then will default to the TxBuilder source account
+    ///
+    func accountMerge(destinationAddress:String, sourceAddress:String? = nil) throws -> TxBuilder {
+
+        do {
+            let _ = try destinationAddress.decodeMuxedAccount()
+        } catch {
+            throw ValidationError.invalidArgument(message: "invalid destination address (account id): \(destinationAddress)")
+        }
+        
+        if let sourceAddress = sourceAddress {
+            do {
+                let _ = try sourceAddress.decodeMuxedAccount()
+            } catch {
+                throw ValidationError.invalidArgument(message: "invalid source address (account id): \(sourceAddress)")
+            }
+        }
+        
+        // this only throws if the accounts are invalid.
+        let op = try! AccountMergeOperation(
+            destinationAccountId: destinationAddress,
+            sourceAccountId: sourceAddress ?? sourceAccount.keyPair.accountId)
+        
+        operations.append(op)
+        return self
+    }
+        
     /// Adds a payment operation to transfer an amount of an asset to a destination address.
     /// Returns the TxBuilder instance for chaining.
     ///
