@@ -73,6 +73,12 @@ public class CommonTxBuilder {
         addAccountSigner(signerAddress: signerAddress, signerWeight: 0)
     }
     
+    /// Add a trustline for an asset so can receive or send it.
+    ///
+    /// - Parameters:
+    ///   - asset: The asset for which support is added.
+    ///   - limit: Optional. The trust limit for the asset. If not set it defaults to max.
+    ///
     fileprivate func addAssetSupport(asset:IssuedAssetId, limit:Decimal?) {
         let asset = ChangeTrustAsset(canonicalForm: asset.id)!
         let op = ChangeTrustOperation(
@@ -83,14 +89,13 @@ public class CommonTxBuilder {
         operations.append(op)
     }
     
+    /// Remove a trustline for an asset so can not receive it any more.
+    /// Hint: the balance of the asset in the account must be 0 for the tx to succeed.
+    ///
+    /// - Parameter asset: The asset for which support is removed.
+    ///
     fileprivate func removeAssetSupport(asset:IssuedAssetId) {
-        let asset = ChangeTrustAsset(canonicalForm: asset.id)!
-        let op = ChangeTrustOperation(
-            sourceAccountId: sourceAccount.keyPair.accountId,
-            asset: asset,
-            limit: Decimal(0))
-        
-        operations.append(op)
+        addAssetSupport(asset: asset, limit: 0)
     }
     
     /// Set thesholds for an account.
@@ -229,6 +234,27 @@ public class TxBuilder:CommonTxBuilder {
     ///
     func removeAccountSigner(signerAddress:AccountKeyPair) throws  -> TxBuilder {
         try super.removeAccountSigner(signerAddress: signerAddress)
+        return self
+    }
+    
+    /// Add a trustline for an asset so can receive or send it.
+    ///
+    /// - Parameters:
+    ///   - asset: The asset for which support is added.
+    ///   - limit: Optional. The trust limit for the asset. If not set it defaults to max.
+    ///
+    func addAssetSupport(asset:IssuedAssetId, limit:Decimal?) -> TxBuilder {
+        super.addAssetSupport(asset: asset, limit: limit)
+        return self
+    }
+    
+    /// Remove a trustline for an asset so can not receive it any more.
+    /// Hint: the balance of the asset in the account must be 0 for the tx to succeed.
+    ///
+    /// - Parameter asset: The asset for which support is removed.
+    ///
+    func removeAssetSupport(asset:IssuedAssetId)  -> TxBuilder {
+        super.removeAssetSupport(asset: asset)
         return self
     }
 
@@ -401,6 +427,27 @@ public class SponsoringBuilder:CommonTxBuilder {
     ///
     func removeAccountSigner(signerAddress:AccountKeyPair) throws  -> SponsoringBuilder {
         try super.removeAccountSigner(signerAddress: signerAddress)
+        return self
+    }
+    
+    /// Add a trustline for an asset so can receive or send it.
+    ///
+    /// - Parameters:
+    ///   - asset: The asset for which support is added.
+    ///   - limit: Optional. The trust limit for the asset. If not set it defaults to max.
+    ///
+    func addAssetSupport(asset:IssuedAssetId, limit:Decimal?) -> SponsoringBuilder {
+        super.addAssetSupport(asset: asset, limit: limit)
+        return self
+    }
+    
+    /// Remove a trustline for an asset so can not receive it any more.
+    /// Hint: the balance of the asset in the account must be 0 for the tx to succeed.
+    ///
+    /// - Parameter asset: The asset for which support is removed.
+    ///
+    func removeAssetSupport(asset:IssuedAssetId)  -> SponsoringBuilder {
+        super.removeAssetSupport(asset: asset)
         return self
     }
     

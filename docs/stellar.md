@@ -83,13 +83,17 @@ let tx = txBuilder.setThreshold(low: 1, medium: 10, high: 30).build()
 Add an asset (trustline) to the account. This allows the account to receive transfers of the asset.
 
 ```swift
-// not yet implemented
+let asset = try IssuedAssetId(
+    code: "USDC",
+    issuer: "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5")
+    
+let tx = txBuilder.addAssetSupport(asset: asset).build()
 ```
 
 Remove an asset from the account (the asset's balance must be 0).
 
 ```swift
-// not yet implemented
+let tx = txBuilder.removeAssetSupport(asset: asset).build()
 ```
 
 #### Swap

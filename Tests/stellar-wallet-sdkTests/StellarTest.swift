@@ -274,6 +274,137 @@ final class StellarTest: XCTestCase {
         XCTAssertNotEqual(11, signers.first!.weight)
     }
     
+    func testAddAndRemoveAssetSupport() async throws {
+        let stellar = wallet.stellar
+        let account = stellar.account
+        
+        // define asset
+        let assetCode = "USDC"
+        let assetIssuerAccountId = "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5"
+        let asset = try IssuedAssetId(
+            code: assetCode,
+            issuer: assetIssuerAccountId)
+        
+        // create transaction (add trustline)
+        var tx = try await stellar.transaction(sourceAddress:accountKeyPair)
+            .addAssetSupport(asset: asset, limit: 100)
+            .build()
+        
+        // sign transaction
+        stellar.sign(tx: tx, keyPair: accountKeyPair)
+        
+        // submit transaction
+        var success = try await stellar.submitTransaction(signedTransaction: tx)
+        XCTAssertTrue(success)
+        
+        // validate
+        var accountInfo = try await account.getInfo(accountAddress: accountKeyPair.address)
+        var balances = accountInfo.balances
+        
+        XCTAssertEqual(2, balances.count)
+        var trustlineFound = false
+        for balance in balances {
+            if (balance.assetCode == assetCode) {
+                XCTAssertEqual(balance.assetIssuer, assetIssuerAccountId)
+                XCTAssertEqual(100, Double(balance.limit))
+                trustlineFound = true
+                break
+            }
+        }
+        XCTAssertTrue(trustlineFound)
+        
+        // create transaction (remove trustline)
+        tx = try await stellar.transaction(sourceAddress:accountKeyPair)
+            .removeAssetSupport(asset: asset)
+            .build()
+        
+        // sign transaction
+        stellar.sign(tx: tx, keyPair: accountKeyPair)
+        
+        // submit transaction
+        success = try await stellar.submitTransaction(signedTransaction: tx)
+        XCTAssertTrue(success)
+        
+        // validate
+        accountInfo = try await account.getInfo(accountAddress: accountKeyPair.address)
+        balances = accountInfo.balances
+        XCTAssertEqual(1, balances.count)
+        
+    }
+    
+    func testSponsoredAddAndRemoveAssetSupport() async throws {
+        let stellar = wallet.stellar
+        let account = stellar.account
+        
+        let sponsorKeyPair = accountKeyPair
+        
+        // create transaction builder
+        let txBuilder = try await stellar.transaction(sourceAddress: sponsorKeyPair)
+        
+        // keypairs identifying the new account to be sponsored
+        let newAccountSigningKeyPair = account.createKeyPair()
+        let newAccountPublicKeyPair = newAccountSigningKeyPair.toPublicKeyPair()
+        let newAccountAddress = newAccountPublicKeyPair.address
+        
+        // fund the new test account
+        try await stellar.fundTestNetAccount(address: newAccountAddress)
+        
+        // define asset
+        let assetCode = "USDC"
+        let assetIssuerAccountId = "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5"
+        let asset = try IssuedAssetId(
+            code: assetCode,
+            issuer: assetIssuerAccountId)
+        
+        // create sponsored transaction (add trustline)
+        var tx = try txBuilder.sponsoring(sponsorAccount: sponsorKeyPair,
+                                      buildingFunction: { (builder) in builder.addAssetSupport(asset: asset, limit: 100)},
+                                      sponsoredAccount: newAccountPublicKeyPair).build()
+        
+        // sign transaction
+        stellar.sign(tx: tx, keyPair: accountKeyPair)
+        stellar.sign(tx: tx, keyPair: newAccountSigningKeyPair)
+        
+        // submit transaction
+        var success = try await stellar.submitTransaction(signedTransaction: tx)
+        XCTAssertTrue(success)
+        
+        // validate
+        var newAccountInfo = try await account.getInfo(accountAddress: newAccountAddress)
+        var balances = newAccountInfo.balances
+        
+        XCTAssertEqual(2, balances.count)
+        var trustlineFound = false
+        for balance in balances {
+            if (balance.assetCode == assetCode) {
+                XCTAssertEqual(balance.assetIssuer, assetIssuerAccountId)
+                XCTAssertEqual(100, Double(balance.limit))
+                trustlineFound = true
+                break
+            }
+        }
+        XCTAssertTrue(trustlineFound)
+        
+        // create sponsored transaction (remove trustline)
+        tx = try txBuilder.sponsoring(sponsorAccount: sponsorKeyPair,
+                                      buildingFunction: { (builder) in builder.removeAssetSupport(asset: asset)},
+                                      sponsoredAccount: newAccountPublicKeyPair).build()
+        
+        // sign transaction
+        stellar.sign(tx: tx, keyPair: accountKeyPair)
+        stellar.sign(tx: tx, keyPair: newAccountSigningKeyPair)
+        
+        // submit transaction
+        success = try await stellar.submitTransaction(signedTransaction: tx)
+        XCTAssertTrue(success)
+        
+        // validate
+        newAccountInfo = try await account.getInfo(accountAddress: newAccountAddress)
+        balances = newAccountInfo.balances
+        XCTAssertEqual(1, balances.count)
+    }
+    
+    
     func testAccountMerge() async throws {
         let stellar = wallet.stellar
         
