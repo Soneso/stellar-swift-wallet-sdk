@@ -75,7 +75,7 @@ let tx = txBuilder.removeAccountSigner(
 Modify account thresholds (useful when multiple signers are assigned to the account). This allows you to restrict access to certain operations when the limit is not reached.
 
 ```swift
-// not yet implemented
+let tx = txBuilder.setThreshold(low: 1, medium: 10, high: 30).build()
 ```
 
 #### Modify Assets (Trustlines)

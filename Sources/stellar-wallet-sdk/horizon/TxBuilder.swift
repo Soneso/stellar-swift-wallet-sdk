@@ -93,7 +93,18 @@ public class CommonTxBuilder {
         operations.append(op)
     }
     
+    /// Set thesholds for an account.
+    /// See: https://developers.stellar.org/docs/encyclopedia/signatures-multisig#thresholds
+    ///
+    /// - Parameters:
+    ///   - low: The low theshold level
+    ///   - medium: The medium theshold level.
+    ///   - high: The high theshold level.
+    ///
     fileprivate func setThreshold(low:UInt32, medium:UInt32, high:UInt32) {
+        
+        // This only throws if only one of signer and signerWeight is passed.
+        // Here we provide non of both, so it will not throw.
         let op = try! SetOptionsOperation(
             sourceAccountId: sourceAccount.keyPair.accountId,
             lowThreshold: low,
@@ -256,6 +267,20 @@ public class TxBuilder:CommonTxBuilder {
         operations.append(op)
         return self
     }
+    
+    /// Set thesholds for an account.
+    /// See: https://developers.stellar.org/docs/encyclopedia/signatures-multisig#thresholds
+    ///
+    /// - Parameters:
+    ///   - low: The low theshold level
+    ///   - medium: The medium theshold level.
+    ///   - high: The high theshold level.
+    ///
+    func setThreshold(low:UInt32, medium:UInt32, high:UInt32) -> TxBuilder {
+        super.setThreshold(low: low, medium: medium, high: high)
+        return self
+    }
+    
         
     /// Adds a payment operation to transfer an amount of an asset to a destination address.
     /// Returns the TxBuilder instance for chaining.
@@ -376,6 +401,19 @@ public class SponsoringBuilder:CommonTxBuilder {
     ///
     func removeAccountSigner(signerAddress:AccountKeyPair) throws  -> SponsoringBuilder {
         try super.removeAccountSigner(signerAddress: signerAddress)
+        return self
+    }
+    
+    /// Set thesholds for an account.
+    /// See: https://developers.stellar.org/docs/encyclopedia/signatures-multisig#thresholds
+    ///
+    /// - Parameters:
+    ///   - low: The low theshold level
+    ///   - medium: The medium theshold level.
+    ///   - high: The high theshold level.
+    ///
+    func setThreshold(low:UInt32, medium:UInt32, high:UInt32) -> SponsoringBuilder {
+        super.setThreshold(low: low, medium: medium, high: high)
         return self
     }
     

@@ -315,4 +315,73 @@ final class StellarTest: XCTestCase {
         XCTAssertEqual("native", balances.first!.assetType)
         XCTAssertTrue(Double(balances.first!.balance)! > 10.000)
     }
+    
+    
+    func testSetTreshold() async throws {
+        let stellar = wallet.stellar
+        let account = stellar.account
+        
+        // create a new account for testing and fund it
+        let sourceAccountKeyPair = account.createKeyPair()
+        let sourceAccountAddress = sourceAccountKeyPair.address
+        try await stellar.fundTestNetAccount(address: sourceAccountAddress)
+        
+        // create transaction builder
+        let txBuilder = try await stellar.transaction(
+            sourceAddress: sourceAccountKeyPair)
+        
+        // create transaction
+        let tx = try txBuilder.setThreshold(low: 1, medium: 10, high: 30).build()
+        
+        // sign transaction
+        stellar.sign(tx: tx, keyPair: sourceAccountKeyPair)
+        
+        // submit transaction
+        let success = try await stellar.submitTransaction(signedTransaction: tx)
+        XCTAssertTrue(success)
+        
+        // validate
+        let accountInfo = try await account.getInfo(accountAddress: sourceAccountAddress)
+        
+        XCTAssertEqual(1, accountInfo.thresholds.lowThreshold)
+        XCTAssertEqual(10, accountInfo.thresholds.medThreshold)
+        XCTAssertEqual(30, accountInfo.thresholds.highThreshold)
+    }
+    
+    func testSponsoredSetTreshold() async throws {
+        let stellar = wallet.stellar
+        let account = stellar.account
+        
+        let sponsorKeyPair = accountKeyPair
+        
+        // create transaction builder
+        let txBuilder = try await stellar.transaction(sourceAddress: sponsorKeyPair)
+        
+        // keypairs identifying the new account to be used
+        let newAccountSigningKeyPair = account.createKeyPair()
+        let newAccountPublicKeyPair = newAccountSigningKeyPair.toPublicKeyPair()
+        let newAccountAddress = newAccountPublicKeyPair.address
+        
+        // fund the new test account
+        try await stellar.fundTestNetAccount(address: newAccountAddress)
+        
+        // create transaction
+        let tx = try txBuilder.sponsoring(sponsorAccount: sponsorKeyPair,
+                                      buildingFunction: { (builder) in builder.setThreshold(low: 1, medium: 10, high: 30)},
+                                      sponsoredAccount: newAccountPublicKeyPair).build()
+        
+        // sign transaction
+        stellar.sign(tx: tx, keyPair: accountKeyPair)
+        stellar.sign(tx: tx, keyPair: newAccountSigningKeyPair)
+        
+        // submit transaction
+        let success = try await stellar.submitTransaction(signedTransaction: tx)
+        XCTAssertTrue(success)
+        
+        // validate
+        let accountInfo = try await account.getInfo(accountAddress: newAccountAddress)        
+        XCTAssertEqual(1, accountInfo.thresholds.lowThreshold)
+        XCTAssertEqual(10, accountInfo.thresholds.medThreshold)
+        XCTAssertEqual(30, accountInfo.thresholds.highThreshold)
+    }
 }
