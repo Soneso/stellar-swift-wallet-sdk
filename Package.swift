@@ -17,8 +17,8 @@ let package = Package(
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
-        .package(url: "git@github.com:Soneso/stellar-ios-mac-sdk.git", from: "3.0.0"), // if it is not update, you can use fix_spm_cache.sh
-        //.package(path: "../stellar-ios-mac-sdk")
+        .package(url: "https://github.com/Soneso/stellar-ios-mac-sdk", exact: "3.0.1-beta.1"),
+        //.package(path: "../stellar-ios-mac-sdk") // if it is not updateing, you can use fix_spm_cache.sh
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
