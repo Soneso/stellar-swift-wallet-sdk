@@ -90,6 +90,16 @@ public class Stellar {
         try! tx.sign(keyPair: keyPair.keyPair, network: config.stellar.network)
     }
     
+    /// Signs the fee bump transaction with the given signing key pair.
+    ///
+    /// - Parameters:
+    ///   - feeBumpTx: The  fee bump transaction to sign
+    ///   - keyPair: The keyPair to sign the transaction with.
+    ///
+    public func sign(feeBumpTx:stellarsdk.FeeBumpTransaction, keyPair:SigningKeyPair) {
+        try! feeBumpTx.sign(keyPair: keyPair.keyPair, network: config.stellar.network)
+    }
+    
     /// Submits a signed transaction to the server. If the submission fails with status 504 indicating a timeout error, it will automatically retry.
     /// Retruns `true` if the transaction was successfully submitted.
     ///
@@ -114,5 +124,54 @@ public class Stellar {
                 throw error
             }
         }
-    }    
+    }
+    
+    /// Submits a signed fee bump transaction to the server. If the submission fails with status 504 indicating a timeout error, it will automatically retry.
+    /// Retruns `true` if the transaction was successfully submitted.
+    ///
+    /// This function throws a horizon request error (stellarsdk.HorizonRequestError) if any error occured while sending the transaction to the stellar network.
+    /// It can also throw a validation error (ValidationError.invalidArgument) if the destination requires a memo but no memo was found in the transaction.
+    ///
+    /// - Parameter signedTransaction: The signed fee bump transaction to submit.
+    ///
+    public func submitTransaction(signedFeeBumpTransaction: stellarsdk.FeeBumpTransaction) async throws -> Bool {
+        let responseEnum = await server.transactions.submitFeeBumpTransaction(transaction: signedFeeBumpTransaction)
+        switch responseEnum {
+        case .success(_):
+            return true
+        case .destinationRequiresMemo(let destinationAccountId):
+            throw ValidationError.invalidArgument(message: ("account \(destinationAccountId) requires memo"))
+        case .failure(let error):
+            switch error {
+            case .timeout(_, _):
+                // resubmit
+                return try await submitTransaction(signedFeeBumpTransaction: signedFeeBumpTransaction)
+          default:
+                throw error
+            }
+        }
+    }
+    
+    /// Creates and returns a FeeBumpTransaction (see https://developers.stellar.org/docs/encyclopedia/fee-bump-transactions).
+    /// for the given feeAddress that will pay the transaction's fee and the transaction for which fee should be paid (inner transaction).
+    /// If the optional parameter baseFee If not specified,  config.stellar.baseFee will be used.
+    ///
+    /// - Parameters:
+    ///   - feeAddress: Address that will pay the transaction's fee
+    ///   - transaction: The transaction for which fee should be paid (inner transaction).
+    ///   - baseFee: The base fee for the fee bump transaction. Must be more then the min. base fee (100) and more than the inner transaction base fee.
+    ///
+    /// Throws a validation error (ValidationError.invalidArgument) if the given base fee is lower then the min base fee (100) or lower then the inner transaction base fee.
+    ///
+    public func makeFeeBump(feeAddress: AccountKeyPair, transaction: stellarsdk.Transaction, baseFee:UInt32? = nil) throws -> stellarsdk.FeeBumpTransaction {
+        let txBaseFee = baseFee ?? config.stellar.baseFee
+        let account = try! MuxedAccount(accountId: feeAddress.address) // this only throws if address is invalid and it can not happen here.
+        do {
+            let fee = UInt64(txBaseFee * UInt32(transaction.operations.count + 1))
+            return try stellarsdk.FeeBumpTransaction(sourceAccount:account, fee: fee, innerTransaction: transaction)
+        } catch {
+            // FeeBumpTransactionError.feeSmallerThanBaseFee or FeeBumpTransactionError.feeSmallerThanInnerTransactionFee
+            throw ValidationError.invalidArgument(message: error.localizedDescription)
+        }
+    }
 }

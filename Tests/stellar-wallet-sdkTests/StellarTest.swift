@@ -515,4 +515,58 @@ final class StellarTest: XCTestCase {
         XCTAssertEqual(10, accountInfo.thresholds.medThreshold)
         XCTAssertEqual(30, accountInfo.thresholds.highThreshold)
     }
+    
+    func testMakeFeeBump() async throws {
+        let stellar = wallet.stellar
+        let account = stellar.account
+        
+        let replaceWith = account.createKeyPair()
+        
+        let sponsorKeyPair = account.createKeyPair()
+        let sponsorAddress = sponsorKeyPair.address
+        try await stellar.fundTestNetAccount(address: sponsorAddress)
+        
+        let sponsoredKeyPair = account.createKeyPair()
+        let sponsoredAddress = sponsoredKeyPair.address
+        try await stellar.fundTestNetAccount(address: sponsoredAddress)
+        
+        let txBuilder = try await stellar.transaction(sourceAddress: sponsoredKeyPair)
+        
+        let transaction = try txBuilder.sponsoring(sponsorAccount: sponsorKeyPair,
+                                                   buildingFunction: { (builder) in builder.lockAccountMasterKey().addAccountSigner(
+                                                    signerAddress: replaceWith, 
+                                                    signerWeight: 1)}).build()
+        
+        stellar.sign(tx: transaction, keyPair: sponsorKeyPair)
+        stellar.sign(tx: transaction, keyPair: sponsoredKeyPair)
+        
+        let feeBump = try stellar.makeFeeBump(feeAddress: sponsorKeyPair, transaction: transaction)
+        stellar.sign(feeBumpTx: feeBump, keyPair: sponsorKeyPair)
+        
+        // submit transaction
+        let success = try await stellar.submitTransaction(signedFeeBumpTransaction: feeBump)
+        XCTAssertTrue(success)
+        
+        // validate
+        let myAccount = try await account.getInfo(accountAddress: sponsoredAddress)
+        XCTAssertEqual(1, myAccount.balances.count)
+        XCTAssertEqual(10000, Double(myAccount.balances.first!.balance))
+        let signers = myAccount.signers
+        XCTAssertEqual(2, signers.count)
+        var newSignerFound = false
+        var masterKeySignerFound = false
+        for signer in signers {
+            if (signer.key == replaceWith.address) {
+                XCTAssertEqual(1, signer.weight)
+                newSignerFound = true
+            } else if (signer.key == sponsoredAddress) {
+                XCTAssertEqual(0, signer.weight)
+                masterKeySignerFound = true
+            } else {
+                XCTFail("should not have additional signers")
+            }
+        }
+        XCTAssertTrue(newSignerFound)
+        XCTAssertTrue(masterKeySignerFound)
+    }
 }

@@ -355,9 +355,9 @@ public class TxBuilder:CommonTxBuilder {
     /// - Parameters:
     ///   - sponsorAccount: The account doing the sponsoring.
     ///   - buildingFunction: Function for creating the operations that will be sponsored.
-    ///   - sponsoredAccount: The account that will be sponsored.
+    ///   - sponsoredAccount: The account that will be sponsored. Optional, if not provided, the source account will be used.
     ///
-    public func sponsoring(sponsorAccount:AccountKeyPair, buildingFunction:(_:SponsoringBuilder) -> SponsoringBuilder, sponsoredAccount:AccountKeyPair?) -> TxBuilder {
+    public func sponsoring(sponsorAccount:AccountKeyPair, buildingFunction:(_:SponsoringBuilder) -> SponsoringBuilder, sponsoredAccount:AccountKeyPair? = nil) -> TxBuilder {
         let sponsoredAccountKp = sponsoredAccount?.keyPair ?? sourceAccount.keyPair
         let beginSponsorshipOp = BeginSponsoringFutureReservesOperation(sponsoredAccountId: sponsoredAccountKp.accountId, sponsoringAccountId: sponsorAccount.address)
         operations.append(beginSponsorshipOp)

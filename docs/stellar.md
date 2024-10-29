@@ -290,7 +290,7 @@ let txBuilder = try await stellar.transaction(
 
 let replaceWith = account.createKeyPair()
 
-let tx = try txBuilder.sponsoring(
+let transaction = try txBuilder.sponsoring(
     sponsorAccount: sponsorKeyPair,
     buildingFunction: {(builder) in builder.lockAccountMasterKey()
                                             .addAccountSigner(signerAddress: replaceWith, signerWeight: 1)}).build()
@@ -300,20 +300,20 @@ Second, sign transaction with both keys.
 
 ```swift
 stellar.sign(tx: transaction, keyPair: sponsorKeyPair)
-stellar.sign(tx: tx, keyPair: sponsoredKeyPair)
+stellar.sign(tx: transaction, keyPair: sponsoredKeyPair)
 ```
 
 Next, create a fee bump, targeting the transaction.
 
 ```swift
-// not yet implemented
+let feeBump = try stellar.makeFeeBump(feeAddress: sponsorKeyPair, transaction: transaction)
+stellar.sign(feeBumpTx: feeBump, keyPair: sponsorKeyPair)
 ```
 
 Finally, submit a fee-bump transaction. Executing this transaction will be fully covered by the `sponsorKeyPair` and `sponsoredKeyPair` and may not even have any XLM funds on its account.
 
 ```swift
-let success = try await stellar
-    .submitTransaction(signedTransaction: feeBump)
+let success = try await stellar.submitTransaction(signedFeeBumpTransaction: feeBump)
 ```
 
 ## Using XDR to Send Transaction Data
