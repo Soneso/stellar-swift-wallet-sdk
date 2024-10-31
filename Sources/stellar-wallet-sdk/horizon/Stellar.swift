@@ -174,4 +174,46 @@ public class Stellar {
             throw ValidationError.invalidArgument(message: error.localizedDescription)
         }
     }
+    
+    /// Decode transaction or fee bump transaction from a xdr envelope base 64 string.
+    ///
+    /// - Parameter xdr: The xdr transaction envelope or fee bump transaction envelope base 64 string.
+    ///
+    public func decodeTransaction(xdr:String) -> DecodedTransactionEnum {
+        do {
+            let transactionEnvelopeXdr = try stellarsdk.TransactionEnvelopeXDR(xdr: xdr)
+            switch transactionEnvelopeXdr {
+            case .feeBump(let feeBumpTransactionEnvelopeXDR):
+                return DecodedTransactionEnum.feeBumpTransaction(feeBumpTx: try buildFeeBumpTransaction(envelopeXDR: feeBumpTransactionEnvelopeXDR))
+            default:
+                return DecodedTransactionEnum.transaction(tx: try stellarsdk.Transaction(envelopeXdr: xdr))
+            }
+        } catch {
+            return DecodedTransactionEnum.invalidXdrErr
+        }
+    }
+    
+    // TODO: move this logic to horizon sdk
+    private func buildFeeBumpTransaction(envelopeXDR:stellarsdk.FeeBumpTransactionEnvelopeXDR) throws -> stellarsdk.FeeBumpTransaction {
+        let feeBumpSourceAccount = try stellarsdk.MuxedAccount(accountId: envelopeXDR.tx.sourceAccount.ed25519AccountId,
+                                                               id:envelopeXDR.tx.sourceAccount.id)
+        let innerTxEnvelopeXdr = TransactionEnvelopeXDR.v1(envelopeXDR.tx.innerTx.tx)
+        guard let innerTxEnvB64 = innerTxEnvelopeXdr.xdrEncoded else {
+            throw ValidationError.invalidArgument(message: "invalid xdr")
+        }
+        let innerTx = try stellarsdk.Transaction(envelopeXdr: innerTxEnvB64)
+        let feeBumpTx = try stellarsdk.FeeBumpTransaction(sourceAccount: feeBumpSourceAccount, 
+                                                          fee: envelopeXDR.tx.fee,
+                                                          innerTransaction: innerTx)
+        for signature in envelopeXDR.signatures {
+            feeBumpTx.addSignature(signature: signature)
+        }
+        return feeBumpTx
+    }
+}
+
+public enum DecodedTransactionEnum {
+    case transaction(tx: stellarsdk.Transaction)
+    case feeBumpTransaction(feeBumpTx: stellarsdk.FeeBumpTransaction)
+    case invalidXdrErr
 }

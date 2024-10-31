@@ -165,13 +165,28 @@ let createTxn = try txBuilder.createAccount(
 This transaction must be sent to external signer (holder of externalKeyPair) to be signed.
 
 ```swift
-// not yet implemented
+let xdrString = createTxn.toEnvelopeXdrBase64()
+
+// Send xdr encoded transaction to your backend server to sign
+let xdrStringFromBackend = try await sendTransactionToBackend(xdr:xdrString)
+
+// Decode xdr to get the signed transaction
+let signedTransactionEnum = stellar.decodeTransaction(xdr: xdrStringFromBackend)
 ```
 
 Signed transaction can be submitted by the wallet.
 
 ```swift
-try await stellar.submitTransaction(signedTransaction: tx)
+switch signedTransactionEnum {
+case .transaction(let tx):
+    // submit transaction
+    let success = try await stellar.submitTransaction(signedTransaction: tx)
+    XCTAssertTrue(success)
+case .feeBumpTransaction(_):
+    // ...
+case .invalidXdrErr:
+    // ...
+}
 ```
 
 Now, after the account is created, it can perform operations. For example, we can disable the master keypair and replace it with a new one (let's call it the device keypair) atomically in one transaction:
@@ -318,8 +333,61 @@ let success = try await stellar.submitTransaction(signedFeeBumpTransaction: feeB
 
 ## Using XDR to Send Transaction Data
 
+Note, that a wallet may not have a signing key for `sponsorKeyPair`. In that case, it's necessary to convert the transaction to XDR, send it to the server, containing `sponsorKey` and return 
+the signed transaction back to the wallet. Let's use the previous example of sponsoring account creation, but this time with the sponsor key being unknown to the wallet. 
+The first step is to define the public key of the sponsor keypair:
+
 ```swift
-// not yet implemented
+let sponsorKeyPair = try PublicKeyPair(accountId: "GC5GD...")
+```
+
+Next, create an account in the same manner as before and sign it with `newKeyPair`. This time, convert the transaction to XDR:
+
+```swift
+let newKeyPair = account.createKeyPair()
+        
+let txBuilder = try await stellar.transaction(sourceAddress: sponsorKeyPair)
+let transaction = try txBuilder.sponsoring(sponsorAccount: sponsorKeyPair, 
+                                            buildingFunction: { (builder) in builder.createAccount(newAccount: newKeyPair)},
+                                            sponsoredAccount: newKeyPair).build()
+        
+stellar.sign(tx: transaction, keyPair: newKeyPair)
+        
+let xdrString = sponsorAccountCreationTx.toEnvelopeXdrBase64()
+```
+
+It can now be sent to the server. On the server, sign it with a private key for the sponsor address:
+
+```swift
+private func signTransaction(xdrString:String) throws -> String {
+    let sponsorPrivateKey = try SigningKeyPair(secretKey: "SD3LH4...")
+    let transactionEnum = stellar.decodeTransaction(xdr: xdrString)
+    switch transactionEnum {
+    case .transaction(let tx):
+        stellar.sign(tx: tx, keyPair: sponsorPrivateKey)
+        return tx.toEnvelopeXdrBase64()
+    case .feeBumpTransaction(let feeBumpTx):
+        stellar.sign(feeBumpTx: feeBumpTx, keyPair: sponsorPrivateKey)
+        return feeBumpTx.toEnvelopeXdrBase64()
+    case .invalidXdrErr:
+        throw ValidationError.invalidArgument(message: "invalid envelope xdr")
+    }
+}
+```
+
+When the client receives the fully signed transaction, it can be decoded and sent to the Stellar network:
+
+```swift
+let signedTransaction = stellar.decodeTransaction(xdr: xdrStringFromBackend)
+switch signedTransaction {
+case .transaction(let tx):
+    // submit transaction
+    let success = try await stellar.submitTransaction(signedTransaction: tx)
+case .feeBumpTransaction(let feeBumpTx):
+    // ...
+case .invalidXdrErr:
+    // ...
+}
 ```
 
 ## Submit Transaction

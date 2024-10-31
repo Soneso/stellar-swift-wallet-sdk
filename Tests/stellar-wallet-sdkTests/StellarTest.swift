@@ -539,7 +539,7 @@ final class StellarTest: XCTestCase {
         
         stellar.sign(tx: transaction, keyPair: sponsorKeyPair)
         stellar.sign(tx: transaction, keyPair: sponsoredKeyPair)
-        
+                
         let feeBump = try stellar.makeFeeBump(feeAddress: sponsorKeyPair, transaction: transaction)
         stellar.sign(feeBumpTx: feeBump, keyPair: sponsorKeyPair)
         
@@ -568,5 +568,72 @@ final class StellarTest: XCTestCase {
         }
         XCTAssertTrue(newSignerFound)
         XCTAssertTrue(masterKeySignerFound)
+        
+        // test base64 xdr encoding and decoding
+        guard let envelopeXdr = feeBump.toEnvelopeXdrBase64() else {
+            XCTFail("could not encode fee bump transaction")
+            return
+        }
+        let decodedTxEnum = stellar.decodeTransaction(xdr: envelopeXdr)
+        switch decodedTxEnum {
+        case .transaction(_):
+            XCTFail("should not be normal transaction")
+        case .feeBumpTransaction(let feeBumpTx):
+            XCTAssertEqual(feeBumpTx.toEnvelopeXdrBase64(), envelopeXdr)
+        case .invalidXdrErr:
+            XCTFail("sould not be invalid xdr")
+        }
+    }
+    
+    func testUseXdrToSendTxData() async throws {
+        let stellar = wallet.stellar
+        let account = stellar.account
+        
+        let sponsorKeyPair = try PublicKeyPair(accountId: "GBUTDNISXHXBMZE5I4U5INJTY376S5EW2AF4SQA2SWBXUXJY3OIZQHMV")
+        let newKeyPair = account.createKeyPair()
+        
+        let txBuilder = try await stellar.transaction(sourceAddress: sponsorKeyPair)
+        let sponsorAccountCreationTx = try txBuilder.sponsoring(sponsorAccount: sponsorKeyPair, 
+                                                                buildingFunction: { (builder) in builder.createAccount(newAccount: newKeyPair)},
+                                                                sponsoredAccount: newKeyPair).build()
+        
+        stellar.sign(tx: sponsorAccountCreationTx, keyPair: newKeyPair)
+        
+        guard let xdrString = sponsorAccountCreationTx.toEnvelopeXdrBase64() else {
+            XCTFail("could not encode transaction to base 64 xdr")
+            return
+        }
+        
+        // Send xdr encoded transaction to your backend server to sign
+        let xdrStringFromBackend = try await sendTransactionToBackend(xdr:xdrString)
+        
+        // Decode xdr to get the signed transaction
+        let signedTransactionEnum = stellar.decodeTransaction(xdr: xdrStringFromBackend)
+        
+        switch signedTransactionEnum {
+        case .transaction(let tx):
+            // submit transaction
+            let success = try await stellar.submitTransaction(signedTransaction: tx)
+            XCTAssertTrue(success)
+        case .feeBumpTransaction(_):
+            XCTFail("should not be fee bump")
+        case .invalidXdrErr:
+            XCTFail("invalid xdr received from server")
+        }
+        
+        // validate
+        let newAccount = try await account.getInfo(accountAddress: newKeyPair.address)
+        XCTAssertGreaterThan(newAccount.sequenceNumber, 0)
+        let balance = newAccount.balances.first!
+        XCTAssertEqual("native", balance.assetType)
+        XCTAssertEqual(0.0, Double(balance.balance))
+        
+    }
+    
+    private func sendTransactionToBackend(xdr:String) async throws -> String {
+        let serverSigner = try DomainSigner(url: "https://server-signer.replit.app/sign",
+                                        requestHeaders: ["Authorization": "Bearer 987654321"]);
+        return try await serverSigner.signWithDomainAccount(transactionXDR: xdr,
+                                                        networkPassPhrase: "Test SDF Network ; September 2015")
     }
 }
