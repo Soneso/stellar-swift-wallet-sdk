@@ -210,6 +210,88 @@ public class Stellar {
         }
         return feeBumpTx
     }
+    
+    /// Submit transaction with a fee increase. Recommended way of creating transactions. This method repeatedly tries to submit transaction, until it's successful.
+    /// When [timeout] is reached, base fee will be increased on the [baseFeeIncrease] value.
+    ///
+    /// - Parameters:
+    ///   - sourceAddress: The source account keypair. It is used as the transactions source account and also used for signing the transaction
+    ///   - timeout: transaction timeout in seconds
+    ///   - baseFeeIncrease: amount on which fee will be increased after timeout is reached
+    ///   - maxBaseFee: The max fee allowed (stroops) of the transaction. Increased fee is limited by this value.
+    ///   - buildingFunction: Function for building the operations of the transactions.
+    ///   - baseFee: The base fee (stroops) of the transaction. If not specified, the default configuration value [StellarConfiguration.baseFee] will be used
+    ///   - memo: Optional transaction memo.
+    ///
+    public func submitWithFeeIncrease(sourceAddress: SigningKeyPair,
+                                      timeout:UInt32,
+                                      baseFeeIncrease: UInt32,
+                                      maxBaseFee: UInt32,
+                                      buildingFunction:(_:TxBuilder) -> TxBuilder,
+                                      baseFee:UInt32? = nil,
+                                      memo:stellarsdk.Memo? = nil) async throws -> Bool {
+        return try await submitWithFeeIncreaseAndSignerFunction(sourceAddress: sourceAddress,
+                                                                timeout: timeout,
+                                                                baseFeeIncrease: baseFeeIncrease,
+                                                                maxBaseFee: maxBaseFee,
+                                                                buildingFunction: buildingFunction,
+                                                                signerFunction: {(tx) in sign(tx: tx, keyPair: sourceAddress)})
+        
+    }
+    
+    /// Submit transaction with a fee increase. Recommended way of creating transactions. This method repeatedly tries to submit transaction, until it's successful.
+    /// When [timeout] is reached, base fee will be increased on the [baseFeeIncrease] value.
+    ///
+    /// - Parameters:
+    ///   - sourceAddress: The source account keypair. It is used as the transactions source account.
+    ///   - timeout: transaction timeout in seconds
+    ///   - baseFeeIncrease: amount on which fee will be increased after timeout is reached
+    ///   - maxBaseFee: The max fee allowed (stroops) of the transaction. Increased fee is limited by this value.
+    ///   - buildingFunction: Function for building the operations of the transactions.
+    ///   - signerFunction: Function that will be used to sign the transaction
+    ///   - baseFee: The base fee (stroops) of the transaction. If not specified, the default configuration value [StellarConfiguration.baseFee] will be used
+    ///   - memo: Optional transaction memo.
+    ///
+    public func submitWithFeeIncreaseAndSignerFunction(sourceAddress: AccountKeyPair,
+                                                       timeout:UInt32,
+                                                       baseFeeIncrease: UInt32,
+                                                       maxBaseFee: UInt32,
+                                                       buildingFunction:(_:TxBuilder) -> TxBuilder,
+                                                       signerFunction:(_:stellarsdk.Transaction) -> Void,
+                                                       baseFee:UInt32? = nil,
+                                                       memo:stellarsdk.Memo? = nil) async throws -> Bool {
+        
+        var txBuilder = try await transaction(sourceAddress: sourceAddress, timeout: timeout, baseFee: baseFee, memo: memo)
+        
+        txBuilder = buildingFunction(txBuilder)
+        
+        var tx = try txBuilder.build()
+        signerFunction(tx)
+        
+        let responseEnum = await server.transactions.submitTransaction(transaction: tx)
+        switch responseEnum {
+        case .success(_):
+            return true
+        case .destinationRequiresMemo(let destinationAccountId):
+            throw ValidationError.invalidArgument(message: ("account \(destinationAccountId) requires memo"))
+        case .failure(let error):
+            switch error {
+            case .timeout(_, _):
+                // Transaction has expired, Increasing fee.
+                let newFee = min(maxBaseFee, tx.fee + baseFeeIncrease)
+                print("Transaction has expired. Increasing fee to \(newFee) Stroops.")
+                return try await submitWithFeeIncreaseAndSignerFunction(sourceAddress: sourceAddress, 
+                                                                        timeout: timeout,
+                                                                        baseFeeIncrease: baseFeeIncrease,
+                                                                        maxBaseFee: maxBaseFee,
+                                                                        buildingFunction: buildingFunction,
+                                                                        signerFunction: signerFunction)
+                
+          default:
+                throw error
+            }
+        }
+    }
 }
 
 public enum DecodedTransactionEnum {

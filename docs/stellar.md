@@ -409,7 +409,15 @@ However, the method above doesn't handle fee surge pricing in the network gracef
 So, instead, the alternative approach is to `submitWithFeeIncrease`:
 
 ```swift
-// not yet implemented
+let success = 
+try await stellar.submitWithFeeIncrease(sourceAddress: sourceAccountKeyPair, 
+                                        timeout: 30,
+                                        baseFeeIncrease: 100,
+                                        maxBaseFee: 2000,
+                                        buildingFunction: {
+                                             (builder) in try! builder.transfer(destinationAddress: account2KeyPair.address, 
+                                                                                assetId: NativeAssetId(),
+                                                                                amount: 10.0)})
 ```
 
 This will create and sign the transaction that originated from the `sourceAccountKeyPair`. Every 30 seconds this function will re-construct this transaction with a new fee (increased by 100 stroops), repeating signing and submitting. Once the transaction is successful, the function will return the transaction body. Note, that any other error will terminate the retry cycle and an exception will be thrown.

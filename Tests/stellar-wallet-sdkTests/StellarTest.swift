@@ -636,4 +636,40 @@ final class StellarTest: XCTestCase {
         return try await serverSigner.signWithDomainAccount(transactionXDR: xdr,
                                                         networkPassPhrase: "Test SDF Network ; September 2015")
     }
+    
+    func testSubmitTxWithFeeIncrease() async throws {
+        let stellar = wallet.stellar
+        let account = stellar.account
+        
+        let account1KeyPair = account.createKeyPair()
+        try await stellar.fundTestNetAccount(address: account1KeyPair.address)
+        let account2KeyPair = account.createKeyPair()
+        try await stellar.fundTestNetAccount(address: account2KeyPair.address)
+        
+        // this test is more effective on public net
+        // change wallet on top to: var wallet = Wallet.publicNet;
+        // uncomment and fill:
+        // let account1KeyPair = try SigningKeyPair(secretKey: "S...")
+        // let account2KeyPair = try PublicKeyPair(accountId: "GBH5Y77GMEOCYQOXGAMJY4C65RAMBXKZBDHA5XBNLJQUC3Z2HGQP5OC5")
+        
+        let success =
+        try await stellar.submitWithFeeIncrease(sourceAddress: account1KeyPair,
+                                              timeout: 30,
+                                              baseFeeIncrease: 100,
+                                              maxBaseFee: 2000,
+                                              buildingFunction: {
+                                                    (builder) in try! builder.transfer(destinationAddress: account2KeyPair.address,
+                                                                                       assetId: NativeAssetId(),
+                                                                                       amount: 10.0)})
+        
+        XCTAssertTrue(success)
+        
+        // validate
+        let newAccount = try await account.getInfo(accountAddress: account2KeyPair.address)
+        let balance = newAccount.balances.first!
+        XCTAssertEqual("native", balance.assetType)
+        XCTAssertEqual(10010.0, Double(balance.balance))
+        
+    }
+        
 }
