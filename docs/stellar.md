@@ -101,7 +101,17 @@ let tx = txBuilder.removeAssetSupport(asset: asset).build()
 Exchange an account's asset for a different asset. The account must have a trustline for the destination asset.
 
 ```swift
-// not yet implemented
+let txBuilder = try await stellar.transaction(sourceAddress: sourceKp)
+
+let usdcAsset = try IssuedAssetId(
+    code: "USDC",
+    issuer: "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5"
+)
+
+let txn = try txBuilder.swap(
+    fromAsset: NativeAssetId(),
+    toAsset: usdcAsset,
+    amount: 0.1).build()
 ```
 
 #### Path Pay
@@ -109,7 +119,18 @@ Exchange an account's asset for a different asset. The account must have a trust
 Send one asset from the source account and receive a different asset in the destination account.
 
 ```swift
-// not yet implemented
+let txBuilder = try await stellar.transaction(sourceAddress: sourceKp)
+
+let usdcAsset = try IssuedAssetId(
+    code: "USDC",
+    issuer: "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5"
+)
+
+let txn = try txBuilder.pathPay(
+    destinationAddress: receivingKp.address,
+    sendAsset: NativeAssetId(),
+    destinationAsset: usdcAsset,
+    sendAmount: 5).build();
 ```
 
 #### Set Memo

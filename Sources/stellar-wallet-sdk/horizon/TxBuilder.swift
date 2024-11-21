@@ -371,7 +371,148 @@ public class TxBuilder:CommonTxBuilder {
         operations.append(endSponsoringOp)
         return self
     }
-
+    
+    /// Creates and adds a strict send path payment operation to the transaction builder.
+    /// Returns the TxBuilder instance for chaining.
+    ///
+    /// - Parameters:
+    ///   - sendAssetId: Asset to be sent.
+    ///   - sendAmount: The amount to be sent.
+    ///   - destinationAddress: Address to which the payment is sent
+    ///   - destinationAssetId: The asset to be received by the destination
+    ///   - destinationMinAmount: The minimum amount of the destination asset to be receive. This is a protective measure, it allows you to specify a lower bound for an acceptable conversion (optional, default is ".0000001")
+    ///   - path: payment path that can be selected from the result of using [Stellar.findStrictSendPathForDestinationAddress] or [Stellar.findStrictSendPathForDestinationAssets]
+    ///
+    public func strictSend(sendAssetId: StellarAssetId,
+                           sendAmount:Decimal,
+                           destinationAddress: String,
+                           destinationAssetId:StellarAssetId,
+                           destinationMinAmount:Decimal? = nil,
+                           path:[StellarAssetId]? = nil) -> TxBuilder {
+        
+        var assetPath:[Asset] = []
+        if let assetIdPath = path {
+            assetIdPath.forEach{ item in
+                assetPath.append(item.toAsset())
+            }
+        }
+        
+        let op = try! PathPaymentStrictSendOperation(sourceAccountId: sourceAccount.keyPair.accountId,
+                                                sendAsset: sendAssetId.toAsset(),
+                                                sendMax: sendAmount,
+                                                destinationAccountId: destinationAddress,
+                                                destAsset: destinationAssetId.toAsset(),
+                                                destAmount: destinationMinAmount ?? Decimal(0.0000001),
+                                                     path: assetPath)
+        
+        operations.append(op)
+        return self
+    }
+    
+    /// Creates and adds a strict receive path payment operation to the transaction builder.
+    /// Returns the TxBuilder instance for chaining.
+    ///
+    /// - Parameters:
+    ///   - sendAssetId: Asset to be sent.
+    ///   - destinationAddress: Address to which the payment is sent
+    ///   - destinationAssetId: The asset to be received by the destination
+    ///   - destinationAmount: Amount to be received by the destination.
+    ///   - sendMaxAmount: The maximum amount of the destination asset to be sent. This is a protective measure, it allows you to specify an upper bound for an acceptable conversion (optional, default is int64 max).
+    ///   - path: payment path that can be selected from the result of using [Stellar.findStrictReceivePathForSourceAssets] or [Stellar.findStrictReceivePathForSourceAddress]
+    ///
+    public func strictReceive(sendAssetId: StellarAssetId,
+                              destinationAddress: String,
+                              destinationAssetId:StellarAssetId,
+                              destinationAmount:Decimal,
+                              sendMaxAmount:Decimal? = nil,
+                              path:[StellarAssetId]? = nil) -> TxBuilder {
+        
+        var assetPath:[Asset] = []
+        if let assetIdPath = path {
+            assetIdPath.forEach{ item in
+                assetPath.append(item.toAsset())
+            }
+        }
+        
+        let op = try! PathPaymentStrictReceiveOperation(sourceAccountId: sourceAccount.keyPair.accountId,
+                                                        sendAsset: sendAssetId.toAsset(),
+                                                        sendMax: sendMaxAmount ?? Decimal(922337203685.4775807),
+                                                        destinationAccountId: destinationAddress,
+                                                        destAsset: destinationAssetId.toAsset(),
+                                                        destAmount: destinationAmount,
+                                                        path: assetPath)
+        
+        operations.append(op)
+        return self
+    }
+    
+    /// Creates and adds a path payment operation to the transaction builder.
+    /// Returns the current instance of the TransactionBuilder for method chaining.
+    ///
+    /// - Parameters:
+    ///   - destinationAddress: Address to which the payment is sent
+    ///   - sendAsset:Asset to send
+    ///   - destinationAsset: The asset to be received by the destination
+    ///   - sendAmount: Amount to be send. You must specify either [sendAmount] or [destAmount], but not both.
+    ///   - destAmount: Amount to be received. You must specify either [sendAmount] or [destAmount], but not both.
+    ///   - destMin: The minimum amount of the destination asset to be receive. This is a protective measure, it allows you to specify a lower bound for an acceptable conversion. Only used if using sendAmount (optional, default is ".0000001").
+    ///   - sendMax: The maximum amount of the destination asset to be sent. This is a protective measure, it allows you to specify an upper bound for an acceptable conversion. Only used if using destAmount (optional, default is int64 max).
+    ///   - path: payment path that can be selected from the result of using [Stellar.findStrictSendPathForDestinationAddress] or [Stellar.findStrictSendPathForDestinationAssets] if [sendAmount] is given, or [Stellar.findStrictReceivePathForSourceAssets] or [Stellar.findStrictReceivePathForSourceAddress] if [destAmount] is given.
+    ///
+    public func pathPay(destinationAddress: String,
+                        sendAsset: StellarAssetId,
+                        destinationAsset:StellarAssetId,
+                        sendAmount:Decimal? = nil,
+                        destAmount:Decimal? = nil,
+                        destMin:Decimal? = nil,
+                        sendMax:Decimal? = nil,
+                        path:[StellarAssetId]? = nil) throws -> TxBuilder {
+        
+        if ((sendAmount != nil && destAmount != nil) ||
+                (sendAmount == nil && destAmount == nil)) {
+            throw ValidationError.invalidArgument(message: "Must give sendAmount or destAmount value, but not both.")
+        }
+        
+        if let sendAmountVal = sendAmount {
+            return strictSend(sendAssetId: sendAsset,
+                              sendAmount: sendAmountVal,
+                              destinationAddress: destinationAddress,
+                              destinationAssetId: destinationAsset,
+                              destinationMinAmount: destMin,
+                              path: path)
+        } else {
+            return strictReceive(sendAssetId: sendAsset, 
+                                 destinationAddress: destinationAddress,
+                                 destinationAssetId: destinationAsset,
+                                 destinationAmount: destAmount!,
+                                 sendMaxAmount: sendMax,
+                                 path: path)
+        }
+    }
+    
+    /// Swap assets using the Stellar network. This swaps using the
+    /// pathPaymentStrictSend operation. Returns the current instance of the TransactionBuilder for method chaining.
+    ///
+    /// - Parameters:
+    ///   - fromAsset: The source asset to be sent.
+    ///   - toAsset: The destination asset to receive
+    ///   - amount: The amount of the source asset to be sent
+    ///   - destMin: The minimum amount of the destination asset to be receive. This is a protective measure, it allows you to specify a lower bound for an acceptable conversion. (optional, default is ".0000001").
+    ///   - path: payment path  that can be selected from the result of using [Stellar.findStrictSendPathForDestinationAddress] or [Stellar.findStrictSendPathForDestinationAssets]
+    ///
+    public func swap(fromAsset:StellarAssetId,
+                     toAsset:StellarAssetId,
+                     amount: Decimal,
+                     destMin: Decimal? = nil,
+                     path:[StellarAssetId]? = nil) throws -> TxBuilder {
+        
+        return try pathPay(destinationAddress: sourceAccount.keyPair.accountId,
+                       sendAsset: fromAsset,
+                       destinationAsset: toAsset,
+                       sendAmount: amount,
+                       destMin: destMin,
+                       path: path)
+    }
 }
 
 public class SponsoringBuilder:CommonTxBuilder {

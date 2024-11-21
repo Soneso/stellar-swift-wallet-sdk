@@ -6,6 +6,7 @@
 //
 
 import XCTest
+import stellarsdk
 @testable import stellar_wallet_sdk
 
 final class StellarTest: XCTestCase {
@@ -669,6 +670,257 @@ final class StellarTest: XCTestCase {
         let balance = newAccount.balances.first!
         XCTAssertEqual("native", balance.assetType)
         XCTAssertEqual(10010.0, Double(balance.balance))
+        
+    }
+    
+    func testPathPayments() async throws {
+        let stellar = wallet.stellar
+        let account = stellar.account
+        
+        let keyPairA = account.createKeyPair()
+        try await stellar.fundTestNetAccount(address: keyPairA.address)
+        let accountAId = keyPairA.address
+        
+        let keyPairB = account.createKeyPair()
+        let accountBId = keyPairB.address
+        
+        let keyPairC = account.createKeyPair()
+        let accountCId = keyPairC.address
+        
+        let keyPairD = account.createKeyPair()
+        let accountDId = keyPairD.address
+        
+        let keyPairE = account.createKeyPair()
+        let accountEId = keyPairE.address
+            
+        // fund the other accounts.
+        var txBuilder = try await stellar.transaction(sourceAddress: keyPairA)
+        
+        let createAccountsTransaction = try txBuilder
+            .createAccount(newAccount: keyPairB, startingBalance: 10)
+            .createAccount(newAccount: keyPairC, startingBalance: 10)
+            .createAccount(newAccount: keyPairD, startingBalance: 10)
+            .createAccount(newAccount: keyPairE, startingBalance: 10)
+            .build();
+        
+        stellar.sign(tx: createAccountsTransaction, keyPair: keyPairA)
+        
+        // submit transaction
+        var success = try await stellar.submitTransaction(signedTransaction: createAccountsTransaction)
+        XCTAssertTrue(success)
+        
+        // create assets for testing
+        let iomAsset = try! IssuedAssetId(code: "IOM", issuer: accountAId)
+        let ecoAsset = try! IssuedAssetId(code: "ECO", issuer: accountAId)
+        let moonAsset = try! IssuedAssetId(code: "MOON", issuer: accountAId)
+        
+        // let c trust iom
+        txBuilder = try await stellar.transaction(sourceAddress: keyPairC)
+        var trustTransaction = try txBuilder.addAssetSupport(asset: iomAsset, limit: 200999).build()
+        stellar.sign(tx: trustTransaction, keyPair: keyPairC);
+
+        // submit transaction
+        success = try await stellar.submitTransaction(signedTransaction: trustTransaction)
+        XCTAssertTrue(success)
+        
+
+        // let b trust iom and eco
+        txBuilder = try await stellar.transaction(sourceAddress: keyPairB)
+        trustTransaction = try txBuilder.addAssetSupport(asset: iomAsset, limit: 200999).addAssetSupport(asset: ecoAsset, limit: 200999).build()
+        stellar.sign(tx: trustTransaction, keyPair: keyPairB);
+        
+        // submit transaction
+        success = try await stellar.submitTransaction(signedTransaction: trustTransaction)
+        XCTAssertTrue(success)
+        
+        // let d trust eco and moon
+        txBuilder = try await stellar.transaction(sourceAddress: keyPairD)
+        trustTransaction = try txBuilder.addAssetSupport(asset: ecoAsset, limit: 200999).addAssetSupport(asset: moonAsset, limit: 200999).build()
+        stellar.sign(tx: trustTransaction, keyPair: keyPairD);
+        
+        // submit transaction
+        success = try await stellar.submitTransaction(signedTransaction: trustTransaction)
+        XCTAssertTrue(success)
+        
+        // let e trust moon
+        txBuilder = try await stellar.transaction(sourceAddress: keyPairE)
+        trustTransaction = try txBuilder.addAssetSupport(asset: moonAsset, limit: 200999).build()
+        stellar.sign(tx: trustTransaction, keyPair: keyPairE);
+
+        // submit transaction
+        success = try await stellar.submitTransaction(signedTransaction: trustTransaction)
+        XCTAssertTrue(success)
+        
+        // fund accounts with issued assets
+        txBuilder = try await stellar.transaction(sourceAddress: keyPairA);
+        let fundTransaction = try txBuilder
+            .transfer(destinationAddress: accountCId, assetId: iomAsset, amount: 100)
+            .transfer(destinationAddress: accountBId, assetId: iomAsset, amount: 100)
+            .transfer(destinationAddress: accountBId, assetId: ecoAsset, amount: 100)
+            .transfer(destinationAddress: accountDId, assetId: moonAsset, amount: 100)
+            .build();
+        stellar.sign(tx: fundTransaction, keyPair: keyPairA)
+        
+        // submit transaction
+        success = try await stellar.submitTransaction(signedTransaction: fundTransaction)
+        XCTAssertTrue(success)
+        
+        // B makes offer: sell 100 ECO - buy IOM, price 0.5
+        let sellOfferOpB = ManageSellOfferOperation(sourceAccountId: accountBId,
+                                                    selling: ecoAsset.toAsset(),
+                                                    buying: iomAsset.toAsset(),
+                                                    amount: 100,
+                                                    price: Price(numerator: 1, denominator: 2),
+                                                    offerId: 0)
+        
+        // D makes offer: sell 100 MOON - buy ECO, price 0.5
+        let sellOfferOpD = ManageSellOfferOperation(sourceAccountId: accountDId,
+                                                    selling: moonAsset.toAsset(),
+                                                    buying: ecoAsset.toAsset(),
+                                                    amount: 100,
+                                                    price: Price(numerator: 1, denominator: 2),
+                                                    offerId: 0)
+        
+        txBuilder = try await stellar.transaction(sourceAddress: keyPairB)
+        let sellOfferTransaction = try txBuilder.addOperation(operation: sellOfferOpB).addOperation(operation: sellOfferOpD).build()
+        stellar.sign(tx: sellOfferTransaction, keyPair: keyPairB)
+        stellar.sign(tx: sellOfferTransaction, keyPair: keyPairD)
+        
+        // submit transaction
+        success = try await stellar.submitTransaction(signedTransaction: sellOfferTransaction)
+        XCTAssertTrue(success)
+        
+        // wait a bit for the ledger to close
+        try! await Task.sleep(nanoseconds: UInt64(5 * Double(NSEC_PER_SEC)))
+        
+        // check if we can find the path to send 10 IOM to E, since E does not trust IOM
+        // expected IOM->ECO->MOON
+        var paymentPaths = try await stellar.findStrictSendPathForDestinationAddress(destinationAddress: accountEId,
+                                                                                     sourceAssetId: iomAsset,
+                                                                                     sourceAmount: "10")
+        XCTAssertEqual(1, paymentPaths.count)
+        var paymentPath = paymentPaths.first!
+        XCTAssertEqual(moonAsset.sep38, paymentPath.destinationAsset.sep38)
+        XCTAssertEqual(iomAsset.sep38, paymentPath.sourceAsset.sep38)
+        XCTAssertEqual(10, Double(paymentPath.sourceAmount))
+        XCTAssertEqual(40, Double(paymentPath.destinationAmount))
+        
+        var assetsPath = paymentPath.path
+        XCTAssertEqual(1, assetsPath.count)
+        XCTAssertEqual(ecoAsset.sep38, assetsPath.first!.sep38)
+        
+        paymentPaths = try await stellar.findStrictSendPathForDestinationAssets(destinationAssets: [moonAsset],
+                                                                                sourceAssetId: iomAsset,
+                                                                                sourceAmount: "10")
+        
+        XCTAssertEqual(1, paymentPaths.count)
+        paymentPath = paymentPaths.first!
+        XCTAssertEqual(moonAsset.sep38, paymentPath.destinationAsset.sep38)
+        XCTAssertEqual(iomAsset.sep38, paymentPath.sourceAsset.sep38)
+        XCTAssertEqual(10, Double(paymentPath.sourceAmount))
+        XCTAssertEqual(40, Double(paymentPath.destinationAmount))
+        
+        assetsPath = paymentPath.path
+        XCTAssertEqual(1, assetsPath.count)
+        XCTAssertEqual(ecoAsset.sep38, assetsPath.first!.sep38)
+        
+        // C sends IOM to E (she receives MOON)
+        txBuilder = try await stellar.transaction(sourceAddress: keyPairC)
+        let strictSendTransaction = try txBuilder.strictSend(sendAssetId: iomAsset,
+                                                             sendAmount: 5,
+                                                             destinationAddress: accountEId,
+                                                             destinationAssetId: moonAsset,
+                                                             destinationMinAmount: 19,
+                                                             path: assetsPath).build()
+        
+        stellar.sign(tx: strictSendTransaction, keyPair: keyPairC)
+        
+        // submit transaction
+        success = try await stellar.submitTransaction(signedTransaction: strictSendTransaction)
+        XCTAssertTrue(success)
+        
+        // test also "pathPay"
+        txBuilder = try await stellar.transaction(sourceAddress: keyPairC)
+        let pathPayTransaction = try txBuilder.pathPay(destinationAddress: accountEId,
+                                                       sendAsset: iomAsset,
+                                                       destinationAsset: moonAsset,
+                                                       sendAmount: 5,
+                                                       destMin: 19,
+                                                       path: assetsPath).build()
+        stellar.sign(tx: pathPayTransaction, keyPair: keyPairC)
+        
+        // submit transaction
+        success = try await stellar.submitTransaction(signedTransaction: pathPayTransaction)
+        XCTAssertTrue(success)
+        
+        // check if E received MOON
+        var info = try await account.getInfo(accountAddress: accountEId)
+        var moonFound = false
+        info.balances.forEach{  item in
+            if item.assetCode == "MOON" {
+                moonFound = true
+                XCTAssertEqual(40, Double(item.balance))
+            }
+        }
+        XCTAssertTrue(moonFound)
+        
+        // next lets check strict receive
+        paymentPaths = try await stellar.findStrictReceivePathForSourceAddress(sourceAddress: accountCId,
+                                                                               destinationAssetId: moonAsset,
+                                                                               destinationAmount: "8")
+        
+        XCTAssertEqual(1, paymentPaths.count)
+        paymentPath = paymentPaths.first!
+        XCTAssertEqual(moonAsset.sep38, paymentPath.destinationAsset.sep38)
+        XCTAssertEqual(iomAsset.sep38, paymentPath.sourceAsset.sep38)
+        XCTAssertEqual(2, Double(paymentPath.sourceAmount))
+        XCTAssertEqual(8, Double(paymentPath.destinationAmount))
+        
+        assetsPath = paymentPath.path
+        XCTAssertEqual(1, assetsPath.count)
+        XCTAssertEqual(ecoAsset.sep38, assetsPath.first!.sep38)
+        
+        // for source assets
+        paymentPaths = try await stellar.findStrictReceivePathForSourceAssets(sourceAssets: [iomAsset],
+                                                                              destinationAssetId: moonAsset,
+                                                                              destinationAmount: "8")
+        
+        XCTAssertEqual(1, paymentPaths.count)
+        paymentPath = paymentPaths.first!
+        XCTAssertEqual(moonAsset.sep38, paymentPath.destinationAsset.sep38)
+        XCTAssertEqual(iomAsset.sep38, paymentPath.sourceAsset.sep38)
+        XCTAssertEqual(2, Double(paymentPath.sourceAmount))
+        XCTAssertEqual(8, Double(paymentPath.destinationAmount))
+        
+        assetsPath = paymentPath.path
+        XCTAssertEqual(1, assetsPath.count)
+        XCTAssertEqual(ecoAsset.sep38, assetsPath.first!.sep38)
+        
+        // send to E
+        txBuilder = try await stellar.transaction(sourceAddress: keyPairC)
+        let strictReceiveTransaction = try txBuilder.strictReceive(sendAssetId: iomAsset,
+                                                                   destinationAddress: accountEId,
+                                                                   destinationAssetId: moonAsset,
+                                                                   destinationAmount: 8,
+                                                                   sendMaxAmount: 2, 
+                                                                   path: assetsPath).build()
+        
+        stellar.sign(tx: strictReceiveTransaction, keyPair: keyPairC)
+        
+        // submit transaction
+        success = try await stellar.submitTransaction(signedTransaction: strictReceiveTransaction)
+        XCTAssertTrue(success)
+        
+        // check if E received MOON
+        info = try await account.getInfo(accountAddress: accountEId)
+        moonFound = false
+        info.balances.forEach{  item in
+            if item.assetCode == "MOON" {
+                moonFound = true
+                XCTAssertEqual(48, Double(item.balance))
+            }
+        }
+        XCTAssertTrue(moonFound)
         
     }
         

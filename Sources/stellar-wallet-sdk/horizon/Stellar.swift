@@ -265,7 +265,7 @@ public class Stellar {
         
         txBuilder = buildingFunction(txBuilder)
         
-        var tx = try txBuilder.build()
+        let tx = try txBuilder.build()
         signerFunction(tx)
         
         let responseEnum = await server.transactions.submitTransaction(transaction: tx)
@@ -291,6 +291,214 @@ public class Stellar {
                 throw error
             }
         }
+    }
+    
+    /// Fetches available paths on the Stellar network between the destination account, and the source asset to be send by the source account
+    /// considering the given source amount.
+    ///
+    /// - Parameters:
+    ///   - destinationAddress: The account id of the destination account that should receive the funds
+    ///   - sourceAssetId: The source asset to find the path for
+    ///   - sourceAmount: The source asset amount to find the path for
+    ///
+    public func findStrictSendPathForDestinationAddress(destinationAddress: String,
+                                                        sourceAssetId: StellarAssetId,
+                                                        sourceAmount: String) async throws -> [PaymentPath] {
+        
+        let sourceAssetParams = getAssetParams(assetId: sourceAssetId)
+        let responseEnum = await server.paymentPaths.strictSend(sourceAmount: sourceAmount,
+                                                                sourceAssetType: sourceAssetParams.assetType,
+                                                                sourceAssetCode: sourceAssetParams.assetCode,
+                                                                sourceAssetIssuer: sourceAssetParams.assetIssuer,
+                                                                destinationAccount: destinationAddress)
+        switch responseEnum {
+        case .success(let details):
+            var paths:[PaymentPath] = []
+            details.records.forEach { item in
+                let path = PaymentPath.fromPathResponse(response: item)
+                paths.append(path)
+            }
+            return paths
+        case .failure(let error):
+            throw error
+        }
+    }
+    
+    /// Fetches available paths on the Stellar network between the source asset sent by the source account
+    /// and the given destinationAssets considering the source asset amount.
+    ///
+    /// - Parameters:
+    ///   - destinationAssets: List of assets that the destination account can receive
+    ///   - sourceAssetId: The source asset to find the path for
+    ///   - sourceAmount: The source asset amount to find the path for
+    ///
+    public func findStrictSendPathForDestinationAssets(destinationAssets: [StellarAssetId],
+                                                       sourceAssetId: StellarAssetId,
+                                                       sourceAmount: String) async throws -> [PaymentPath] {
+        
+        let sourceAssetParams = getAssetParams(assetId: sourceAssetId)
+        let responseEnum = await server.paymentPaths.strictSend(sourceAmount: sourceAmount,
+                                                                sourceAssetType: sourceAssetParams.assetType,
+                                                                sourceAssetCode: sourceAssetParams.assetCode,
+                                                                sourceAssetIssuer: sourceAssetParams.assetIssuer,
+                                                                destinationAssets: encodeAssets(assets: destinationAssets))
+        switch responseEnum {
+        case .success(let details):
+            var paths:[PaymentPath] = []
+            details.records.forEach { item in
+                let path = PaymentPath.fromPathResponse(response: item)
+                paths.append(path)
+            }
+            return paths
+        case .failure(let error):
+            throw error
+        }
+    }
+    
+    /// Fetches available payment paths on the Stellar network between the assets hold by the source account and the
+    /// the destination asset considering the given destination amount to be received by the destination account.
+    ///
+    /// - Parameters:
+    ///   - sourceAddress: The account id of the account that wants to send the funds
+    ///   - destinationAssetId: The destination asset to find the path for
+    ///   - destinationAmount: The destination asset amount to find the path for
+    ///
+    public func findStrictReceivePathForSourceAddress(sourceAddress: String,
+                                                      destinationAssetId: StellarAssetId,
+                                                      destinationAmount: String) async throws -> [PaymentPath] {
+        
+        let destinationAssetParams = getAssetParams(assetId: destinationAssetId)
+        let responseEnum = await server.paymentPaths.strictReceive(sourceAccount: sourceAddress,
+                                                                   destinationAssetType: destinationAssetParams.assetType,
+                                                                   destinationAssetCode: destinationAssetParams.assetCode,
+                                                                   destinationAssetIssuer: destinationAssetParams.assetIssuer,
+                                                                   destinationAmount: destinationAmount)
+        
+        switch responseEnum {
+        case .success(let details):
+            var paths:[PaymentPath] = []
+            details.records.forEach { item in
+                let path = PaymentPath.fromPathResponse(response: item)
+                paths.append(path)
+            }
+            return paths
+        case .failure(let error):
+            throw error
+        }
+    }
+    
+    /// Fetches available payment paths on the Stellar network between the given source assets and the
+    /// the destination asset considering the given destination amount to be received by the destination account.
+    ///
+    /// - Parameters:
+    ///   - sourceAssets: The assets to find the paths for
+    ///   - destinationAssetId: The destination asset to find the path for
+    ///   - destinationAmount: The destination asset amount to find the path for
+    ///
+    public func findStrictReceivePathForSourceAssets(sourceAssets: [StellarAssetId],
+                                                     destinationAssetId: StellarAssetId,
+                                                     destinationAmount: String) async throws -> [PaymentPath] {
+        
+        let destinationAssetParams = getAssetParams(assetId: destinationAssetId)
+        let responseEnum = await server.paymentPaths.strictReceive(sourceAssets: encodeAssets(assets: sourceAssets),
+                                                                   destinationAssetType: destinationAssetParams.assetType,
+                                                                   destinationAssetCode: destinationAssetParams.assetCode,
+                                                                   destinationAssetIssuer: destinationAssetParams.assetIssuer,
+                                                                   destinationAmount: destinationAmount)
+        
+        switch responseEnum {
+        case .success(let details):
+            var paths:[PaymentPath] = []
+            details.records.forEach { item in
+                let path = PaymentPath.fromPathResponse(response: item)
+                paths.append(path)
+            }
+            return paths
+        case .failure(let error):
+            throw error
+        }
+    }
+    
+    private func encodeAssets(assets:[StellarAssetId]) -> String {
+        var result = ""
+        assets.forEach { asset in
+            if result != "" {
+                result += ","
+            }
+            result += asset.toAsset().toCanonicalForm()
+        }
+        return result
+    }
+    
+    private func getAssetParams(assetId: StellarAssetId) -> AssetParams {
+        var assetType = "native"
+        var assetCode:String? = nil
+        var assetIssuer:String? = nil
+        
+        let asset = assetId.toAsset()
+        switch asset.type {
+        case AssetType.ASSET_TYPE_CREDIT_ALPHANUM4:
+            assetType = "credit_alphanum4"
+            assetCode = asset.code
+            assetIssuer = asset.issuer!.accountId
+        case AssetType.ASSET_TYPE_CREDIT_ALPHANUM4:
+            assetType = "credit_alphanum12"
+            assetCode = asset.code
+            assetIssuer = asset.issuer!.accountId
+        default:
+            break
+        }
+        return AssetParams(assetType: assetType, assetCode: assetCode, assetIssuer: assetIssuer)
+    }
+}
+
+public class PaymentPath {
+    let sourceAmount:String
+    let sourceAsset:StellarAssetId
+    let destinationAmount: String
+    let destinationAsset: StellarAssetId
+    let path:[StellarAssetId]
+    
+    init(sourceAmount: String,
+         sourceAsset:StellarAssetId,
+         destinationAmount:String,
+         destinationAsset: StellarAssetId,
+         path:[StellarAssetId]) {
+        
+        self.sourceAmount = sourceAmount
+        self.sourceAsset = sourceAsset
+        self.destinationAmount = destinationAmount
+        self.destinationAsset = destinationAsset
+        self.path = path
+    }
+    
+    static func fromPathResponse(response: stellarsdk.PaymentPathResponse) -> PaymentPath {
+        let sourceAsset = response.sourceAssetType == "native" ? NativeAssetId() : try! IssuedAssetId(code: response.sourceAssetCode!, issuer: response.sourceAssetIssuer!)
+        let sourceAmount = response.sourceAmount
+        let destinationAsset = response.destinationAssetType == "native" ? NativeAssetId() : try! IssuedAssetId(code: response.destinationAssetCode!, issuer: response.destinationAssetIssuer!)
+        let destinationAmount = response.destinationAmount
+        var path:[StellarAssetId] = []
+        response.path.forEach { item in
+            let asset = item.assetType == "native" ? NativeAssetId() : try! IssuedAssetId(code: item.assetCode!, issuer: item.assetIssuer!)
+            path.append(asset)
+        }
+        return PaymentPath(sourceAmount: sourceAmount, 
+                           sourceAsset: sourceAsset,
+                           destinationAmount: destinationAmount,
+                           destinationAsset: destinationAsset,
+                           path: path)
+    }
+}
+
+private class AssetParams {
+    let assetType:String
+    let assetCode:String?
+    let assetIssuer:String?
+    
+    init(assetType: String, assetCode:String? = nil, assetIssuer:String? = nil) {
+        self.assetType = assetType
+        self.assetCode = assetCode
+        self.assetIssuer = assetIssuer
     }
 }
 
