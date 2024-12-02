@@ -22,6 +22,8 @@ public class Wallet {
     /// Stellar class for accessing the stellar network through horizon.
     public var stellar:Stellar
     
+
+    
     /// Initializes a Wallet object from stellar and app config
     ///
     /// - Parameters:
@@ -42,21 +44,27 @@ public class Wallet {
         self.init(stellarConfig: stellarConfig, appConfig: AppConfig())
     }
     
+    public func anchor(homeDomain:String) -> Anchor {
+        let config = Config(stellar: stellarConfig, app: appConfig)
+        return Anchor(config: config, homeDomain: homeDomain)
+    }
+    
     /// Creates a new instance of `Wallet` for the public (main) Stellar network.
     /// Uses the default `AppConfig` with a default wallet signer and no client domain.
     public static var publicNet:Wallet {
         return Wallet(stellarConfig:StellarConfig.publicNet)
-    };
+    }
     
     /// Creates a new instance of `Wallet` for the test Stellar network.
     /// Uses the default `AppConfig` with a default wallet signer and no client domain.
     public static var testNet:Wallet {
         return Wallet(stellarConfig:StellarConfig.testNet)
-    };
+    }
     
     /// Creates a new instance of `Wallet` for the futurenet Stellar network.
     /// Uses the default `AppConfig` with a default wallet signer and no client domain.
     public static var futureNet:Wallet {
         return Wallet(stellarConfig:StellarConfig.futureNet)
-    };
+    }
+    
 }
