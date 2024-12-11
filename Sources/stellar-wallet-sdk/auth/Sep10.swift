@@ -35,9 +35,40 @@ public class Sep10 {
                                        serverSigningKey: serverSigningKey,
                                        serverHomeDomain: serverHomeDomain)
         
-        if let cd = clientDomain, let cds = clientDomainSigner {
-            // TODO: update horizon sdk to accept a signing function
-            throw ValidationError.invalidArgument(message: "Not yet implemented")
+        if let clientDomain = clientDomain, let clientDomainSigner = clientDomainSigner {
+            // get client domain account id
+            var clientDomainAccountId:String?
+            let stellarToml = await StellarToml.from(domain: clientDomain)
+            switch stellarToml {
+            case .success(let response):
+                clientDomainAccountId = response.accountInformation.signingKey
+            case .failure(let error):
+                throw error
+            }
+            
+            guard let clientDomainAccountId = clientDomainAccountId else {
+                throw AnchorAuthError.clientDomainSigningKeyNotFound(clientDomain:clientDomain)
+            }
+            
+            guard let clientDomainKeyPair = try? KeyPair(accountId: clientDomainAccountId) else {
+                throw AnchorAuthError.invaildClientDomainSigningKey(clientDomain: clientDomain, key: clientDomainAccountId)
+            }
+            
+            let response = await webAuth.jwtToken(forUserAccount: userKeyPair.address,
+                                                  memo: memoId,
+                                                  signers: [userKeyPair.keyPair],
+                                                  homeDomain: serverHomeDomain,
+                                                  clientDomainAccountKeyPair: clientDomainKeyPair,
+                                                  clientDomainSigningFunction: { (txEnvelopeXdr) async throws in
+                return try await clientDomainSigner.signWithDomainAccount(transactionXdr: txEnvelopeXdr,
+                                                                          networkPassphrase:self.config.stellar.network.passphrase)})
+            
+            switch response {
+            case .success(let jwtToken):
+                return try AuthToken(jwt: jwtToken)
+            case .failure(let error):
+                throw error
+            }
         } else {
             let response = await webAuth.jwtToken(forUserAccount: userKeyPair.address,
                                                   memo: memoId,
@@ -51,7 +82,6 @@ public class Sep10 {
             }
         }
     }
-
 }
 
 public class AuthToken {

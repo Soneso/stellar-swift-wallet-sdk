@@ -21,7 +21,7 @@ public protocol WalletSigner {
     /// - Parameters:
     ///   - transactionXdr: The base64 encoded XDR representation of the transaction to sign.
     ///   - networkPassphrase: The network passphrase for the Stellar network.
-    func signWithDomainAccount(transactionXdr:String, networkPassphrase:String) async throws
+    func signWithDomainAccount(transactionXdr:String, networkPassphrase:String) async throws -> String
 }
 
 /// Wallet signer that supports signing with a client signing keypair.
@@ -36,7 +36,7 @@ public class DefaultSigner:WalletSigner {
     }
     
     /// Not supported. Throws `ValidationError.invalidArgument`
-    public func signWithDomainAccount(transactionXdr: String, networkPassphrase: String) async throws {
+    public func signWithDomainAccount(transactionXdr: String, networkPassphrase: String) async throws -> String {
         throw ValidationError.invalidArgument(message: "This signer can't sign transaction with domain")
     }
 }
@@ -67,15 +67,15 @@ public class DomainSigner:DefaultSigner {
     /// - Parameters:
     ///   - transactionXdr: The base64 encoded XDR representation of the transaction to sign.
     ///   - networkPassphrase: The network passphrase for the Stellar network.
-    public func signWithDomainAccount(transactionXDR: String, networkPassPhrase: String) async throws -> String {
+    public override func signWithDomainAccount(transactionXdr: String, networkPassphrase: String) async throws -> String {
         var urlRequest = URLRequest(url: endpoint)
         requestHeaders.forEach {
             urlRequest.addValue($0.value, forHTTPHeaderField: $0.key)
         }
         urlRequest.httpMethod = "POST"
         let jsonData: [String : Any] = [
-            "transaction": transactionXDR,
-            "network_passphrase": networkPassPhrase
+            "transaction": transactionXdr,
+            "network_passphrase": networkPassphrase
         ]
         let requestData = try JSONSerialization.data(withJSONObject:jsonData)
         urlRequest.httpBody = requestData

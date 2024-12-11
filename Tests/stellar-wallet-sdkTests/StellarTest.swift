@@ -634,8 +634,8 @@ final class StellarTest: XCTestCase {
     private func sendTransactionToBackend(xdr:String) async throws -> String {
         let serverSigner = try DomainSigner(url: "https://server-signer.replit.app/sign",
                                         requestHeaders: ["Authorization": "Bearer 987654321"]);
-        return try await serverSigner.signWithDomainAccount(transactionXDR: xdr,
-                                                        networkPassPhrase: "Test SDF Network ; September 2015")
+        return try await serverSigner.signWithDomainAccount(transactionXdr: xdr,
+                                                            networkPassphrase: "Test SDF Network ; September 2015")
     }
     
     func testSubmitTxWithFeeIncrease() async throws {
