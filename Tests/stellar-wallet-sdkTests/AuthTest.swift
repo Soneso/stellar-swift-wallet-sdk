@@ -17,7 +17,6 @@ final class AuthTestUtils {
     static let webAuthEndpoint = "https://\(anchorWebAuthDomain)/auth"
     static let clientDomain = "api.client.org"
     static let clientSignerUrl = "https://\(clientDomain)/auth"
-    static let testMemo:Int = 19989123;
     static let serverAccountId = "GBWMCCC3NHSKLAOJDBKKYW7SSH2PFTTNVFKWSGLWGDLEBKLOVP5JLBBP"
     static let serverSecretSeed = "SAWDHXQG6ROJSU4QGCW7NSTYFHPTPIVC2NC7QKVTO7PZCSO2WEBGM54W"
     static let userAccountId = "GB4L7JUU5DENUXYH3ANTLVYQL66KQLDDJTN5SF7MWEDGWSGUA375V44V"
@@ -30,6 +29,18 @@ final class AuthTestUtils {
     static let serverKeypair = try! KeyPair(secretSeed: serverSecretSeed)
     static let clientKeypair = try! KeyPair(secretSeed: clientSecretSeed)
     static let userKeypair = try! KeyPair(secretSeed: userSecretSeed)
+    
+    static let testMemoValid:UInt64 = 19989123;
+    // this are used to generate errors in the mocks, that have to be handled by the sep-10 client validation
+    static let testMemoInvalidSeqNr:UInt64 = 100;
+    static let testMemoInvalidFirstOpSrcAcc:UInt64 = 101;
+    static let testMemoInvalidSecondOpSrcAcc:UInt64 = 102;
+    static let testMemoInvalidHomeDomain:UInt64 = 103;
+    static let testMemoInvalidWebAuthDomain:UInt64 = 104;
+    static let testMemoInvalidTimebounds:UInt64 = 105;
+    static let testMemoInvalidOperationType:UInt64 = 106;
+    static let testMemoInvalidSignature:UInt64 = 107;
+    static let testMemoMultipleSignature:UInt64 = 108;
     
 }
 
@@ -59,7 +70,21 @@ final class AuthTest: XCTestCase {
         clientSignerServerMock = ClientSignerResponseMock(address: AuthTestUtils.clientDomain)
     }
     
-    func testBasicSuccess() async throws {
+    func testAll() async throws {
+        try await basicSuccessTest()
+        try await clientDomainSuccessTest()
+        try await basicMemoSuccessTest()
+        try await getChallengeInvalidSeqNrTest()
+        try await getChallengeInvalidSecondOpSrcAccTest()
+        try await getChallengeInvalidHomeDomainTest()
+        try await getChallengeInvalidWebAuthDomainTest()
+        try await getChallengeInvalidTimeboundsTest()
+        try await getChallengeInvalidOperationTypeTest()
+        try await getChallengeInvalidSignatureTest()
+        try await getChallengeMultipleSignaturesTest()
+    }
+    
+    func basicSuccessTest() async throws {
         let anchor = wallet.anchor(homeDomain: AuthTestUtils.anchorDomain)
         let authKey = try SigningKeyPair(secretKey: AuthTestUtils.userSecretSeed)
         
@@ -73,7 +98,7 @@ final class AuthTest: XCTestCase {
         }
     }
     
-    func testClientDomainSuccess() async throws {
+    func clientDomainSuccessTest() async throws {
         let anchor = wallet.anchor(homeDomain: AuthTestUtils.anchorDomain)
         let authKey = try SigningKeyPair(secretKey: AuthTestUtils.userSecretSeed)
         let clientDomainSigner = try DomainSigner(url: AuthTestUtils.clientSignerUrl)
@@ -90,16 +115,217 @@ final class AuthTest: XCTestCase {
         }
     }
     
-    /*func testStellarAnchorBasics() async throws {
-        let anchor = wallet.anchor(homeDomain: "testanchor.stellar.org")
-        let info = try await anchor.getInfo()
-        XCTAssertEqual("https://testanchor.stellar.org/auth", info.accountInformation.webAuthEndpoint)
-        XCTAssertEqual("GCUZ6YLL5RQBTYLTTQLPCM73C5XAIUGK2TIMWQH7HPSGWVS2KJ2F3CHS", info.accountInformation.signingKey)
+    func basicMemoSuccessTest() async throws {
+        let anchor = wallet.anchor(homeDomain: AuthTestUtils.anchorDomain)
+        let authKey = try SigningKeyPair(secretKey: AuthTestUtils.userSecretSeed)
         
-        let sep10 = try await anchor.sep10()
-        let authToken = try await sep10.authenticate(userKeyPair: accountKeyPair)
-        XCTAssertEqual("https://testanchor.stellar.org/auth", authToken.issuer)
-    }*/
+        do {
+            let sep10 = try await anchor.sep10()
+            XCTAssertEqual(AuthTestUtils.webAuthEndpoint, sep10.serverAuthEndpoint)
+            let authToken = try await sep10.authenticate(userKeyPair: authKey, memoId: AuthTestUtils.testMemoValid)
+            XCTAssertEqual(AuthTestUtils.jwtSuccess, authToken.jwt)
+        } catch (let e) {
+            XCTFail(e.localizedDescription)
+        }
+    }
+    
+    func getChallengeInvalidSeqNrTest() async throws {
+        let anchor = wallet.anchor(homeDomain: AuthTestUtils.anchorDomain)
+        let authKey = try SigningKeyPair(secretKey: AuthTestUtils.userSecretSeed)
+        
+        do {
+            let sep10 = try await anchor.sep10()
+            XCTAssertEqual(AuthTestUtils.webAuthEndpoint, sep10.serverAuthEndpoint)
+            let authToken = try await sep10.authenticate(userKeyPair: authKey, memoId: AuthTestUtils.testMemoInvalidSeqNr)
+            XCTAssertEqual(AuthTestUtils.jwtSuccess, authToken.jwt)
+            XCTFail("should not reach")
+        } catch GetJWTTokenError.validationErrorError(let validationError){
+            switch validationError {
+            case .sequenceNumberNot0:
+                return
+            default:
+                XCTFail(validationError.localizedDescription)
+            }
+        } catch let error {
+            XCTFail(error.localizedDescription)
+        }
+    }
+    
+    func testGetChallengeInvalidFirstOpSrcAcc() async throws {
+        let anchor = wallet.anchor(homeDomain: AuthTestUtils.anchorDomain)
+        let authKey = try SigningKeyPair(secretKey: AuthTestUtils.userSecretSeed)
+        
+        do {
+            let sep10 = try await anchor.sep10()
+            XCTAssertEqual(AuthTestUtils.webAuthEndpoint, sep10.serverAuthEndpoint)
+            let authToken = try await sep10.authenticate(userKeyPair: authKey, memoId: AuthTestUtils.testMemoInvalidFirstOpSrcAcc)
+            XCTAssertEqual(AuthTestUtils.jwtSuccess, authToken.jwt)
+            XCTFail("should not reach")
+        } catch GetJWTTokenError.validationErrorError(let validationError){
+            switch validationError {
+            case .invalidSourceAccount:
+                return
+            default:
+                XCTFail(validationError.localizedDescription)
+            }
+        } catch let error {
+            XCTFail(error.localizedDescription)
+        }
+    }
+    
+    func getChallengeInvalidSecondOpSrcAccTest() async throws {
+        let anchor = wallet.anchor(homeDomain: AuthTestUtils.anchorDomain)
+        let authKey = try SigningKeyPair(secretKey: AuthTestUtils.userSecretSeed)
+        
+        do {
+            let sep10 = try await anchor.sep10()
+            XCTAssertEqual(AuthTestUtils.webAuthEndpoint, sep10.serverAuthEndpoint)
+            let authToken = try await sep10.authenticate(userKeyPair: authKey, memoId: AuthTestUtils.testMemoInvalidSecondOpSrcAcc)
+            XCTAssertEqual(AuthTestUtils.jwtSuccess, authToken.jwt)
+            XCTFail("should not reach")
+        } catch GetJWTTokenError.validationErrorError(let validationError){
+            switch validationError {
+            case .invalidSourceAccount:
+                return
+            default:
+                XCTFail(validationError.localizedDescription)
+            }
+        } catch let error {
+            XCTFail(error.localizedDescription)
+        }
+    }
+    
+    func getChallengeInvalidHomeDomainTest() async throws {
+        let anchor = wallet.anchor(homeDomain: AuthTestUtils.anchorDomain)
+        let authKey = try SigningKeyPair(secretKey: AuthTestUtils.userSecretSeed)
+        
+        do {
+            let sep10 = try await anchor.sep10()
+            XCTAssertEqual(AuthTestUtils.webAuthEndpoint, sep10.serverAuthEndpoint)
+            let authToken = try await sep10.authenticate(userKeyPair: authKey, memoId: AuthTestUtils.testMemoInvalidHomeDomain)
+            XCTAssertEqual(AuthTestUtils.jwtSuccess, authToken.jwt)
+            XCTFail("should not reach")
+        } catch GetJWTTokenError.validationErrorError(let validationError){
+            switch validationError {
+            case .invalidHomeDomain:
+                return
+            default:
+                XCTFail(validationError.localizedDescription)
+            }
+        } catch let error {
+            XCTFail(error.localizedDescription)
+        }
+    }
+    
+    func getChallengeInvalidWebAuthDomainTest() async throws {
+        let anchor = wallet.anchor(homeDomain: AuthTestUtils.anchorDomain)
+        let authKey = try SigningKeyPair(secretKey: AuthTestUtils.userSecretSeed)
+        
+        do {
+            let sep10 = try await anchor.sep10()
+            XCTAssertEqual(AuthTestUtils.webAuthEndpoint, sep10.serverAuthEndpoint)
+            let authToken = try await sep10.authenticate(userKeyPair: authKey, memoId: AuthTestUtils.testMemoInvalidWebAuthDomain)
+            XCTAssertEqual(AuthTestUtils.jwtSuccess, authToken.jwt)
+            XCTFail("should not reach")
+        } catch GetJWTTokenError.validationErrorError(let validationError){
+            switch validationError {
+            case .invalidWebAuthDomain:
+                return
+            default:
+                XCTFail(validationError.localizedDescription)
+            }
+        } catch let error {
+            XCTFail(error.localizedDescription)
+        }
+    }
+    
+    func getChallengeInvalidTimeboundsTest() async throws {
+        let anchor = wallet.anchor(homeDomain: AuthTestUtils.anchorDomain)
+        let authKey = try SigningKeyPair(secretKey: AuthTestUtils.userSecretSeed)
+        
+        do {
+            let sep10 = try await anchor.sep10()
+            XCTAssertEqual(AuthTestUtils.webAuthEndpoint, sep10.serverAuthEndpoint)
+            let authToken = try await sep10.authenticate(userKeyPair: authKey, memoId: AuthTestUtils.testMemoInvalidTimebounds)
+            XCTAssertEqual(AuthTestUtils.jwtSuccess, authToken.jwt)
+            XCTFail("should not reach")
+        } catch GetJWTTokenError.validationErrorError(let validationError){
+            switch validationError {
+            case .invalidTimeBounds:
+                return
+            default:
+                XCTFail(validationError.localizedDescription)
+            }
+        } catch let error {
+            XCTFail(error.localizedDescription)
+        }
+    }
+    
+    func getChallengeInvalidOperationTypeTest() async throws {
+        let anchor = wallet.anchor(homeDomain: AuthTestUtils.anchorDomain)
+        let authKey = try SigningKeyPair(secretKey: AuthTestUtils.userSecretSeed)
+        
+        do {
+            let sep10 = try await anchor.sep10()
+            XCTAssertEqual(AuthTestUtils.webAuthEndpoint, sep10.serverAuthEndpoint)
+            let authToken = try await sep10.authenticate(userKeyPair: authKey, memoId: AuthTestUtils.testMemoInvalidOperationType)
+            XCTAssertEqual(AuthTestUtils.jwtSuccess, authToken.jwt)
+            XCTFail("should not reach")
+        } catch GetJWTTokenError.validationErrorError(let validationError){
+            switch validationError {
+            case .invalidOperationType:
+                return
+            default:
+                XCTFail(validationError.localizedDescription)
+            }
+        } catch let error {
+            XCTFail(error.localizedDescription)
+        }
+    }
+    
+    func getChallengeInvalidSignatureTest() async throws {
+        let anchor = wallet.anchor(homeDomain: AuthTestUtils.anchorDomain)
+        let authKey = try SigningKeyPair(secretKey: AuthTestUtils.userSecretSeed)
+        
+        do {
+            let sep10 = try await anchor.sep10()
+            XCTAssertEqual(AuthTestUtils.webAuthEndpoint, sep10.serverAuthEndpoint)
+            let authToken = try await sep10.authenticate(userKeyPair: authKey, memoId: AuthTestUtils.testMemoInvalidSignature)
+            XCTAssertEqual(AuthTestUtils.jwtSuccess, authToken.jwt)
+            XCTFail("should not reach")
+        } catch GetJWTTokenError.validationErrorError(let validationError){
+            switch validationError {
+            case .invalidSignature:
+                return
+            default:
+                XCTFail(validationError.localizedDescription)
+            }
+        } catch let error {
+            XCTFail(error.localizedDescription)
+        }
+    }
+    
+    func getChallengeMultipleSignaturesTest() async throws {
+        let anchor = wallet.anchor(homeDomain: AuthTestUtils.anchorDomain)
+        let authKey = try SigningKeyPair(secretKey: AuthTestUtils.userSecretSeed)
+        
+        do {
+            let sep10 = try await anchor.sep10()
+            XCTAssertEqual(AuthTestUtils.webAuthEndpoint, sep10.serverAuthEndpoint)
+            let authToken = try await sep10.authenticate(userKeyPair: authKey, memoId: AuthTestUtils.testMemoMultipleSignature)
+            XCTAssertEqual(AuthTestUtils.jwtSuccess, authToken.jwt)
+            XCTFail("should not reach")
+        } catch GetJWTTokenError.validationErrorError(let validationError){
+            switch validationError {
+            case .signatureNotFound:
+                return
+            default:
+                XCTFail(validationError.localizedDescription)
+            }
+        } catch let error {
+            XCTFail(error.localizedDescription)
+        }
+    }
 }
 
 class WebAuthTomlResponseMock: ResponsesMock {
@@ -154,9 +380,33 @@ class WebAuthChallengeResponseMock: ResponsesMock {
     
     override func requestMock() -> RequestMock {
         let handler: MockHandler = { [weak self] mock, request in
-            if let key = mock.variables["account"] {
+            if let account = mock.variables["account"] {
                 mock.statusCode = 200
-                return self?.requestSuccess(account: key)
+                
+                let memo:UInt64? = mock.variables["memo"] == nil ? nil : UInt64(mock.variables["memo"]!)
+                if(memo == nil || memo == AuthTestUtils.testMemoValid) {
+                    return self?.requestSuccess(account: account, memo:memo)
+                } else if let memo = memo {
+                    if (memo == AuthTestUtils.testMemoInvalidSeqNr) {
+                        return self?.requestChallengeInvalidSequenceNumber(account: account, memo:memo)
+                    } else if (memo == AuthTestUtils.testMemoInvalidFirstOpSrcAcc) {
+                        return self?.requestChallengeInvalidFirstOpSrcAcc(account: account, memo:memo)
+                    } else if (memo == AuthTestUtils.testMemoInvalidSecondOpSrcAcc) {
+                        return self?.requestChallengeInvalidSecondOpSrcAcc(account: account, memo:memo)
+                    } else if (memo == AuthTestUtils.testMemoInvalidHomeDomain) {
+                        return self?.requestChallengeInvalidHomeDomain(account: account, memo:memo)
+                    } else if (memo == AuthTestUtils.testMemoInvalidWebAuthDomain) {
+                        return self?.requestChallengeInvalidWebAuthDomain(account: account, memo:memo)
+                    } else if (memo == AuthTestUtils.testMemoInvalidTimebounds) {
+                        return self?.requestChallengeInvalidTimebounds(account: account, memo:memo)
+                    } else if (memo == AuthTestUtils.testMemoInvalidOperationType) {
+                        return self?.requestChallengeInvalidOperationType(account: account, memo:memo)
+                    } else if (memo == AuthTestUtils.testMemoInvalidSignature) {
+                        return self?.requestChallengeInvalidSignature(account: account, memo:memo)
+                    } else if (memo == AuthTestUtils.testMemoMultipleSignature) {
+                        return self?.requestChallengeMultipleSignature(account: account, memo:memo)
+                    }
+                }
             }
             mock.statusCode = 400
             return """
@@ -194,24 +444,33 @@ class WebAuthChallengeResponseMock: ResponsesMock {
         return ManageDataOperation(sourceAccountId: accountId, name: "\(AuthTestUtils.anchorDomain) auth", data: generateNonce(length: 64)?.data(using: .utf8))
     }
     
+    func getInvalidHomeDomainFirstOp (accountId: String) -> ManageDataOperation {
+        return ManageDataOperation(sourceAccountId: accountId, name: "fake.com auth", data: generateNonce(length: 64)?.data(using: .utf8))
+    }
+    
     func getValidSecondManageDataOp () -> ManageDataOperation {
         return ManageDataOperation(sourceAccountId: serverKeyPair.accountId, name: "web_auth_domain", data: address.data(using: .utf8))
     }
     
-    func requestSuccess(account: String, memo:UInt64? = nil) -> String {
-        let transactionAccount = Account(keyPair: serverKeyPair, sequenceNumber: -1)
-        
+    func getSecondManageDataOpInvalidSourceAccount () -> ManageDataOperation {
+        return ManageDataOperation(sourceAccountId: AuthTestUtils.userAccountId, // invalid, must be server account id
+                                   name: "web_auth_domain",
+                                   data: address.data(using: .utf8))
+    }
+    
+    func getInvalidWebAuthOp () -> ManageDataOperation {
+        return ManageDataOperation(sourceAccountId: serverKeyPair.accountId, name: "web_auth_domain", data: "api.fake.org".data(using: .utf8))
+    }
+    
+    func getMemo(_ memo:UInt64? = nil) -> Memo {
         var txmemo = Memo.none
         if let memoval = memo {
             txmemo = Memo.id(memoval)
         }
- 
-        let transaction = try! Transaction(sourceAccount: transactionAccount,
-                                           operations: [getValidFirstManageDataOp(accountId: account),getValidSecondManageDataOp()],
-                                           memo: txmemo,
-                                           preconditions: getValidTimeBounds())
-        try! transaction.sign(keyPair: serverKeyPair, network: .testnet)
-        
+        return txmemo
+    }
+    
+    func getResponseJson(_ transaction:Transaction) -> String {
         return """
                 {
                 "transaction": "\(try! transaction.encodedEnvelope())"
@@ -219,6 +478,150 @@ class WebAuthChallengeResponseMock: ResponsesMock {
                 """
     }
     
+    func getValidTxAccount() -> Account {
+        return Account(keyPair: serverKeyPair, sequenceNumber: -1)
+    }
+    
+    func requestSuccess(account: String, memo:UInt64? = nil) -> String {
+ 
+        let transaction = try! Transaction(sourceAccount: getValidTxAccount(),
+                                           operations: [getValidFirstManageDataOp(accountId: account),getValidSecondManageDataOp()],
+                                           memo: getMemo(memo),
+                                           preconditions: getValidTimeBounds())
+        try! transaction.sign(keyPair: serverKeyPair, network: .testnet)
+        
+        return getResponseJson(transaction)
+    }
+    
+    func requestChallengeInvalidSequenceNumber(account: String, memo:UInt64? = nil) -> String {
+ 
+        let transaction = try! Transaction(sourceAccount: Account(keyPair: serverKeyPair, sequenceNumber: 2803983),
+                                           operations: [getValidFirstManageDataOp(accountId: account),getValidSecondManageDataOp()],
+                                           memo: getMemo(memo),
+                                           preconditions: getValidTimeBounds())
+        try! transaction.sign(keyPair: serverKeyPair, network: .testnet)
+        
+        return getResponseJson(transaction)
+    }
+    
+    func requestChallengeInvalidFirstOpSrcAcc(account: String, memo:UInt64? = nil) -> String {
+
+        let transaction = try! Transaction(sourceAccount: getValidTxAccount(),
+                                           operations: [
+                                            getValidFirstManageDataOp(accountId: AuthTestUtils.serverAccountId), // invalid, because must be user account
+                                            getValidSecondManageDataOp()
+                                           ],
+                                           memo: getMemo(memo),
+                                           preconditions: getValidTimeBounds())
+        try! transaction.sign(keyPair: serverKeyPair, network: .testnet)
+        
+        return getResponseJson(transaction)
+    }
+    
+    func requestChallengeInvalidSecondOpSrcAcc(account: String, memo:UInt64? = nil) -> String {
+
+        let transaction = try! Transaction(sourceAccount: getValidTxAccount(),
+                                           operations: [
+                                            getValidFirstManageDataOp(accountId: account),
+                                            getSecondManageDataOpInvalidSourceAccount()
+                                           ],
+                                           memo: getMemo(memo),
+                                           preconditions: getValidTimeBounds())
+        try! transaction.sign(keyPair: serverKeyPair, network: .testnet)
+        
+        return getResponseJson(transaction)
+    }
+    
+    func requestChallengeInvalidHomeDomain(account: String, memo:UInt64? = nil) -> String {
+
+        let transaction = try! Transaction(sourceAccount: getValidTxAccount(),
+                                           operations: [
+                                            getInvalidHomeDomainFirstOp(accountId: account),
+                                            getSecondManageDataOpInvalidSourceAccount()
+                                           ],
+                                           memo: getMemo(memo),
+                                           preconditions: getValidTimeBounds())
+        try! transaction.sign(keyPair: serverKeyPair, network: .testnet)
+        
+        return getResponseJson(transaction)
+    }
+    
+    func requestChallengeInvalidWebAuthDomain(account: String, memo:UInt64? = nil) -> String {
+
+        let transaction = try! Transaction(sourceAccount: getValidTxAccount(),
+                                           operations: [
+                                            getValidFirstManageDataOp(accountId: account),
+                                            getInvalidWebAuthOp()
+                                           ],
+                                           memo: getMemo(memo),
+                                           preconditions: getValidTimeBounds())
+        try! transaction.sign(keyPair: serverKeyPair, network: .testnet)
+        
+        return getResponseJson(transaction)
+    }
+    
+    func requestChallengeInvalidTimebounds(account: String, memo:UInt64? = nil) -> String {
+
+        let transaction = try! Transaction(sourceAccount: getValidTxAccount(),
+                                           operations: [
+                                            getValidFirstManageDataOp(accountId: account),
+                                            getValidSecondManageDataOp()
+                                           ],
+                                           memo: getMemo(memo),
+                                           preconditions: getInvalidTimeBounds())
+        try! transaction.sign(keyPair: serverKeyPair, network: .testnet)
+        
+        return getResponseJson(transaction)
+    }
+    
+    func requestChallengeInvalidOperationType(account: String, memo:UInt64? = nil) -> String {
+
+        let transaction = try! Transaction(sourceAccount: getValidTxAccount(),
+                                           operations: [
+                                            getValidFirstManageDataOp(accountId: account),
+                                            getValidSecondManageDataOp(),
+                                            PaymentOperation(sourceAccountId: AuthTestUtils.userAccountId,
+                                                             destinationAccountId: serverKeyPair.accountId,
+                                                             asset: NativeAssetId().toAsset(),
+                                                             amount: 100)
+                                           ],
+                                           memo: getMemo(memo),
+                                           preconditions: getValidTimeBounds())
+        try! transaction.sign(keyPair: serverKeyPair, network: .testnet)
+        
+        return getResponseJson(transaction)
+    }
+    
+    func requestChallengeInvalidSignature(account: String, memo:UInt64? = nil) -> String {
+
+        let transaction = try! Transaction(sourceAccount: getValidTxAccount(),
+                                           operations: [
+                                            getValidFirstManageDataOp(accountId: account),
+                                            getValidSecondManageDataOp()
+                                           ],
+                                           memo: getMemo(memo),
+                                           preconditions: getValidTimeBounds())
+        
+        try! transaction.sign(keyPair: KeyPair.generateRandomKeyPair(), network: .testnet)
+        
+        return getResponseJson(transaction)
+    }
+    
+    func requestChallengeMultipleSignature(account: String, memo:UInt64? = nil) -> String {
+
+        let transaction = try! Transaction(sourceAccount: getValidTxAccount(),
+                                           operations: [
+                                            getValidFirstManageDataOp(accountId: account),
+                                            getValidSecondManageDataOp()
+                                           ],
+                                           memo: getMemo(memo),
+                                           preconditions: getValidTimeBounds())
+        
+        try! transaction.sign(keyPair: serverKeyPair, network: .testnet)
+        try! transaction.sign(keyPair: KeyPair.generateRandomKeyPair(), network: .testnet)
+        
+        return getResponseJson(transaction)
+    }
 }
 
 class WebAuthSendChallengeResponseMock: ResponsesMock {
@@ -344,5 +747,21 @@ class ClientSignerResponseMock: ResponsesMock {
         "network_passphrase": "\(Network.testnet.passphrase)"
         }
         """
+    }
+}
+
+final class AuthTestRemote: XCTestCase {
+    
+    func testStellarAnchorBasics() async throws {
+        let wallet = Wallet.testNet
+        let anchor = wallet.anchor(homeDomain: "testanchor.stellar.org")
+        let info = try await anchor.getInfo()
+        XCTAssertEqual("https://testanchor.stellar.org/auth", info.accountInformation.webAuthEndpoint)
+        XCTAssertEqual("GCUZ6YLL5RQBTYLTTQLPCM73C5XAIUGK2TIMWQH7HPSGWVS2KJ2F3CHS", info.accountInformation.signingKey)
+        
+        let sep10 = try await anchor.sep10()
+        let accountKeyPair = wallet.stellar.account.createKeyPair()
+        let authToken = try await sep10.authenticate(userKeyPair: accountKeyPair)
+        XCTAssertEqual("https://testanchor.stellar.org/auth", authToken.issuer)
     }
 }

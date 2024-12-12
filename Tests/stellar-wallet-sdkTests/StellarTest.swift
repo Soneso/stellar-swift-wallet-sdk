@@ -591,6 +591,12 @@ final class StellarTest: XCTestCase {
         let account = stellar.account
         
         let sponsorKeyPair = try PublicKeyPair(accountId: "GBUTDNISXHXBMZE5I4U5INJTY376S5EW2AF4SQA2SWBXUXJY3OIZQHMV")
+        
+        // prevent error in case of testnet reset
+        if !(try await account.accountExists(accountAddress: sponsorKeyPair.address)) {
+            try await wallet.stellar.fundTestNetAccount(address: sponsorKeyPair.address)
+        }
+
         let newKeyPair = account.createKeyPair()
         
         let txBuilder = try await stellar.transaction(sourceAddress: sponsorKeyPair)
