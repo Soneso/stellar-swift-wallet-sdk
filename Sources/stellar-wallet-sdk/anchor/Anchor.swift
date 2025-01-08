@@ -26,23 +26,23 @@ public class Anchor {
                                      lang: lang)
     }
     
-    public func sep1() async throws -> StellarToml {
+    public func sep1() async throws -> TomlInfo {
         return try await infoHolder.info()
     }
     
-    public func getInfo() async throws -> StellarToml {
+    public func getInfo() async throws -> TomlInfo {
         return try await infoHolder.info()
     }
     
     public func sep10() async throws -> Sep10 {
         let toml = try await infoHolder.info()
-        if (toml.accountInformation.webAuthEndpoint == nil || toml.accountInformation.signingKey == nil) {
+        guard let webAuthEndpoint = toml.webAuthEndpoint, let signingKey = toml.signingKey else {
             throw AnchorAuthError.notSupported
         }
         return Sep10(config: config,
                      serverHomeDomain: homeDomain,
-                     serverAuthEndpoint: toml.accountInformation.webAuthEndpoint!,
-                     serverSigningKey: toml.accountInformation.signingKey!)
+                     serverAuthEndpoint: webAuthEndpoint,
+                     serverSigningKey: signingKey)
     }
     
 }
@@ -51,7 +51,7 @@ public class InfoHolder {
     public var network:Network
     public var homeDomain:String
     public var lang:String?
-    private var tomlInfo:StellarToml?
+    private var tomlInfo:TomlInfo?
     
     public init(network:Network,
                 homeDomain:String,
@@ -62,7 +62,7 @@ public class InfoHolder {
     }
     
     
-    public func info() async throws -> StellarToml {
+    public func info() async throws -> TomlInfo {
         
         if (tomlInfo != nil) {
             return tomlInfo!
@@ -71,8 +71,8 @@ public class InfoHolder {
         let response = await StellarToml.from(domain: homeDomain)
         switch response {
         case .success(let response):
-            tomlInfo = response
-            return response
+            tomlInfo = TomlInfo(stellarToml: response)
+            return tomlInfo!
         case .failure(let error):
             throw error
         }

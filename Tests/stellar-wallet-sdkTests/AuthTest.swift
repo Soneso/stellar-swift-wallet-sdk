@@ -756,8 +756,8 @@ final class AuthTestRemote: XCTestCase {
         let wallet = Wallet.testNet
         let anchor = wallet.anchor(homeDomain: "testanchor.stellar.org")
         let info = try await anchor.getInfo()
-        XCTAssertEqual("https://testanchor.stellar.org/auth", info.accountInformation.webAuthEndpoint)
-        XCTAssertEqual("GCUZ6YLL5RQBTYLTTQLPCM73C5XAIUGK2TIMWQH7HPSGWVS2KJ2F3CHS", info.accountInformation.signingKey)
+        XCTAssertEqual("https://testanchor.stellar.org/auth", info.webAuthEndpoint)
+        XCTAssertEqual("GCUZ6YLL5RQBTYLTTQLPCM73C5XAIUGK2TIMWQH7HPSGWVS2KJ2F3CHS", info.signingKey)
         
         let sep10 = try await anchor.sep10()
         let accountKeyPair = wallet.stellar.account.createKeyPair()
