@@ -89,7 +89,7 @@ final class AuthTest: XCTestCase {
         let authKey = try SigningKeyPair(secretKey: AuthTestUtils.userSecretSeed)
         
         do {
-            let sep10 = try await anchor.sep10()
+            let sep10 = try await anchor.sep10
             XCTAssertEqual(AuthTestUtils.webAuthEndpoint, sep10.serverAuthEndpoint)
             let authToken = try await sep10.authenticate(userKeyPair: authKey)
             XCTAssertEqual(AuthTestUtils.jwtSuccess, authToken.jwt)
@@ -103,7 +103,7 @@ final class AuthTest: XCTestCase {
         let authKey = try SigningKeyPair(secretKey: AuthTestUtils.userSecretSeed)
         let clientDomainSigner = try DomainSigner(url: AuthTestUtils.clientSignerUrl)
         do {
-            let sep10 = try await anchor.sep10()
+            let sep10 = try await anchor.sep10
             XCTAssertEqual(AuthTestUtils.webAuthEndpoint, sep10.serverAuthEndpoint)
             let authToken = try await sep10.authenticate(userKeyPair: authKey,
                                                          clientDomain: AuthTestUtils.clientDomain,
@@ -120,7 +120,7 @@ final class AuthTest: XCTestCase {
         let authKey = try SigningKeyPair(secretKey: AuthTestUtils.userSecretSeed)
         
         do {
-            let sep10 = try await anchor.sep10()
+            let sep10 = try await anchor.sep10
             XCTAssertEqual(AuthTestUtils.webAuthEndpoint, sep10.serverAuthEndpoint)
             let authToken = try await sep10.authenticate(userKeyPair: authKey, memoId: AuthTestUtils.testMemoValid)
             XCTAssertEqual(AuthTestUtils.jwtSuccess, authToken.jwt)
@@ -134,7 +134,7 @@ final class AuthTest: XCTestCase {
         let authKey = try SigningKeyPair(secretKey: AuthTestUtils.userSecretSeed)
         
         do {
-            let sep10 = try await anchor.sep10()
+            let sep10 = try await anchor.sep10
             XCTAssertEqual(AuthTestUtils.webAuthEndpoint, sep10.serverAuthEndpoint)
             let authToken = try await sep10.authenticate(userKeyPair: authKey, memoId: AuthTestUtils.testMemoInvalidSeqNr)
             XCTAssertEqual(AuthTestUtils.jwtSuccess, authToken.jwt)
@@ -156,7 +156,7 @@ final class AuthTest: XCTestCase {
         let authKey = try SigningKeyPair(secretKey: AuthTestUtils.userSecretSeed)
         
         do {
-            let sep10 = try await anchor.sep10()
+            let sep10 = try await anchor.sep10
             XCTAssertEqual(AuthTestUtils.webAuthEndpoint, sep10.serverAuthEndpoint)
             let authToken = try await sep10.authenticate(userKeyPair: authKey, memoId: AuthTestUtils.testMemoInvalidFirstOpSrcAcc)
             XCTAssertEqual(AuthTestUtils.jwtSuccess, authToken.jwt)
@@ -178,7 +178,7 @@ final class AuthTest: XCTestCase {
         let authKey = try SigningKeyPair(secretKey: AuthTestUtils.userSecretSeed)
         
         do {
-            let sep10 = try await anchor.sep10()
+            let sep10 = try await anchor.sep10
             XCTAssertEqual(AuthTestUtils.webAuthEndpoint, sep10.serverAuthEndpoint)
             let authToken = try await sep10.authenticate(userKeyPair: authKey, memoId: AuthTestUtils.testMemoInvalidSecondOpSrcAcc)
             XCTAssertEqual(AuthTestUtils.jwtSuccess, authToken.jwt)
@@ -200,7 +200,7 @@ final class AuthTest: XCTestCase {
         let authKey = try SigningKeyPair(secretKey: AuthTestUtils.userSecretSeed)
         
         do {
-            let sep10 = try await anchor.sep10()
+            let sep10 = try await anchor.sep10
             XCTAssertEqual(AuthTestUtils.webAuthEndpoint, sep10.serverAuthEndpoint)
             let authToken = try await sep10.authenticate(userKeyPair: authKey, memoId: AuthTestUtils.testMemoInvalidHomeDomain)
             XCTAssertEqual(AuthTestUtils.jwtSuccess, authToken.jwt)
@@ -222,7 +222,7 @@ final class AuthTest: XCTestCase {
         let authKey = try SigningKeyPair(secretKey: AuthTestUtils.userSecretSeed)
         
         do {
-            let sep10 = try await anchor.sep10()
+            let sep10 = try await anchor.sep10
             XCTAssertEqual(AuthTestUtils.webAuthEndpoint, sep10.serverAuthEndpoint)
             let authToken = try await sep10.authenticate(userKeyPair: authKey, memoId: AuthTestUtils.testMemoInvalidWebAuthDomain)
             XCTAssertEqual(AuthTestUtils.jwtSuccess, authToken.jwt)
@@ -244,7 +244,7 @@ final class AuthTest: XCTestCase {
         let authKey = try SigningKeyPair(secretKey: AuthTestUtils.userSecretSeed)
         
         do {
-            let sep10 = try await anchor.sep10()
+            let sep10 = try await anchor.sep10
             XCTAssertEqual(AuthTestUtils.webAuthEndpoint, sep10.serverAuthEndpoint)
             let authToken = try await sep10.authenticate(userKeyPair: authKey, memoId: AuthTestUtils.testMemoInvalidTimebounds)
             XCTAssertEqual(AuthTestUtils.jwtSuccess, authToken.jwt)
@@ -266,7 +266,7 @@ final class AuthTest: XCTestCase {
         let authKey = try SigningKeyPair(secretKey: AuthTestUtils.userSecretSeed)
         
         do {
-            let sep10 = try await anchor.sep10()
+            let sep10 = try await anchor.sep10
             XCTAssertEqual(AuthTestUtils.webAuthEndpoint, sep10.serverAuthEndpoint)
             let authToken = try await sep10.authenticate(userKeyPair: authKey, memoId: AuthTestUtils.testMemoInvalidOperationType)
             XCTAssertEqual(AuthTestUtils.jwtSuccess, authToken.jwt)
@@ -288,7 +288,7 @@ final class AuthTest: XCTestCase {
         let authKey = try SigningKeyPair(secretKey: AuthTestUtils.userSecretSeed)
         
         do {
-            let sep10 = try await anchor.sep10()
+            let sep10 = try await anchor.sep10
             XCTAssertEqual(AuthTestUtils.webAuthEndpoint, sep10.serverAuthEndpoint)
             let authToken = try await sep10.authenticate(userKeyPair: authKey, memoId: AuthTestUtils.testMemoInvalidSignature)
             XCTAssertEqual(AuthTestUtils.jwtSuccess, authToken.jwt)
@@ -310,7 +310,7 @@ final class AuthTest: XCTestCase {
         let authKey = try SigningKeyPair(secretKey: AuthTestUtils.userSecretSeed)
         
         do {
-            let sep10 = try await anchor.sep10()
+            let sep10 = try await anchor.sep10
             XCTAssertEqual(AuthTestUtils.webAuthEndpoint, sep10.serverAuthEndpoint)
             let authToken = try await sep10.authenticate(userKeyPair: authKey, memoId: AuthTestUtils.testMemoMultipleSignature)
             XCTAssertEqual(AuthTestUtils.jwtSuccess, authToken.jwt)
@@ -755,11 +755,11 @@ final class AuthTestRemote: XCTestCase {
     func testStellarAnchorBasics() async throws {
         let wallet = Wallet.testNet
         let anchor = wallet.anchor(homeDomain: "testanchor.stellar.org")
-        let info = try await anchor.getInfo()
+        let info = try await anchor.info
         XCTAssertEqual("https://testanchor.stellar.org/auth", info.webAuthEndpoint)
         XCTAssertEqual("GCUZ6YLL5RQBTYLTTQLPCM73C5XAIUGK2TIMWQH7HPSGWVS2KJ2F3CHS", info.signingKey)
         
-        let sep10 = try await anchor.sep10()
+        let sep10 = try await anchor.sep10
         let accountKeyPair = wallet.stellar.account.createKeyPair()
         let authToken = try await sep10.authenticate(userKeyPair: accountKeyPair)
         XCTAssertEqual("https://testanchor.stellar.org/auth", authToken.issuer)

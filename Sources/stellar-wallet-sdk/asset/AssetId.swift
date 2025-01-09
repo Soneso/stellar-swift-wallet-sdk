@@ -81,6 +81,9 @@ public class StellarAssetId: AssetId {
 /// Represents an issued asset on the stellar network.
 public class IssuedAssetId: StellarAssetId {
     
+    public let code:String
+    public let issuer:String
+    
     /// Initializes the `IssuedAssetId`
     ///
     /// This initializer throws a validation error `ValidationError.invalidArgument` if the given code or issuer address are invalid.
@@ -99,7 +102,10 @@ public class IssuedAssetId: StellarAssetId {
         } catch {
             throw ValidationError.invalidArgument(message: "invalid issued asset issuer (account id): \(issuer)")
         }
+        self.code = trimmedCode
+        self.issuer = issuer
         super.init(id: "\(trimmedCode):\(issuer)")
+
     }
 }
 
