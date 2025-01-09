@@ -35,24 +35,29 @@ final class InteractiveFlowTest: XCTestCase {
     var challengeServerMock: IfWebAuthChallengeResponseMock!
     var sendChallengeServerMock: IfWebAuthSendChallengeResponseMock!
     var infoServerMock: InteractiveInfoResponseMock!
+    var depositServerMock: InteractiveDepositResponseMock!
+    var withdrawServerMock: InteractiveWithdrawResponseMock!
 
     override func setUp() {
         URLProtocol.registerClass(ServerMock.self)
         
         anchorTomlServerMock = InteractiveTomlResponseMock(host: InteractiveFlowTestUtils.anchorHost,
                                                        serverSigningKey: InteractiveFlowTestUtils.serverAccountId,
-                                                       authServer: InteractiveFlowTestUtils.anchorWebAuthHost)
+                                                       authServer: InteractiveFlowTestUtils.webAuthEndpoint)
         
         challengeServerMock = IfWebAuthChallengeResponseMock(host: InteractiveFlowTestUtils.anchorWebAuthHost,
                                                            serverKeyPair: InteractiveFlowTestUtils.serverKeypair)
         
         sendChallengeServerMock = IfWebAuthSendChallengeResponseMock(host: InteractiveFlowTestUtils.anchorWebAuthHost)
         infoServerMock = InteractiveInfoResponseMock(host: InteractiveFlowTestUtils.anchorInteractiveHost)
-        
+        depositServerMock = InteractiveDepositResponseMock(host: InteractiveFlowTestUtils.anchorInteractiveHost)
+        withdrawServerMock = InteractiveWithdrawResponseMock(host: InteractiveFlowTestUtils.anchorInteractiveHost)
     }
     
     func testAll() async throws {
         try await infoTest()
+        try await depositTest()
+        try await withdrawTest()
     }
     
     func infoTest() async throws {
@@ -126,6 +131,69 @@ final class InteractiveFlowTest: XCTestCase {
             
             XCTAssertTrue(features.accountCreation)
             XCTAssertTrue(features.claimableBalances)
+            
+        } catch (let e) {
+            XCTFail(e.localizedDescription)
+        }
+    }
+    
+    func depositTest() async throws {
+        let anchor = wallet.anchor(homeDomain: InteractiveFlowTestUtils.anchorHost)
+        let authKey = try SigningKeyPair(secretKey: InteractiveFlowTestUtils.userSecretSeed)
+        
+        do {
+            let authToken = try await anchor.sep10.authenticate(userKeyPair: authKey)
+            XCTAssertEqual(AuthTestUtils.jwtSuccess, authToken.jwt)
+            
+            let anchorInfo = try await anchor.info
+            guard let currencies = anchorInfo.currencies else {
+                XCTFail("no currencies found in anchor stellar toml info")
+                return
+            }
+            
+            guard let usdcCurrencyInfo = currencies.filter({ $0.code == "USDC" }).first else {
+                XCTFail("currency info for USDC not found in anchor stellar toml info")
+                return
+            }
+            
+            let usdcAssetId = try usdcCurrencyInfo.assetId
+            
+            let depositResponse = try await anchor.sep24.deposit(assetId: usdcAssetId, authToken: authToken)
+            XCTAssertEqual("82fhs729f63dh0v4", depositResponse.id)
+            XCTAssertEqual("completed", depositResponse.type)
+            XCTAssertEqual("https://api.example.com/kycflow?account=GACW7NONV43MZIFHCOKCQJAKSJSISSICFVUJ2C6EZIW5773OU3HD64VI", depositResponse.url)
+            
+        } catch (let e) {
+            XCTFail(e.localizedDescription)
+        }
+    }
+    
+    
+    func withdrawTest() async throws {
+        let anchor = wallet.anchor(homeDomain: InteractiveFlowTestUtils.anchorHost)
+        let authKey = try SigningKeyPair(secretKey: InteractiveFlowTestUtils.userSecretSeed)
+        
+        do {
+            let authToken = try await anchor.sep10.authenticate(userKeyPair: authKey)
+            XCTAssertEqual(AuthTestUtils.jwtSuccess, authToken.jwt)
+            
+            let anchorInfo = try await anchor.info
+            guard let currencies = anchorInfo.currencies else {
+                XCTFail("no currencies found in anchor stellar toml info")
+                return
+            }
+            
+            guard let usdcCurrencyInfo = currencies.filter({ $0.code == "USDC" }).first else {
+                XCTFail("currency info for USDC not found in anchor stellar toml info")
+                return
+            }
+            
+            let usdcAssetId = try usdcCurrencyInfo.assetId
+            
+            let withdrawResponse = try await anchor.sep24.withdraw(assetId: usdcAssetId, authToken: authToken)
+            XCTAssertEqual("82fhs729f63dh0v4", withdrawResponse.id)
+            XCTAssertEqual("completed", withdrawResponse.type)
+            XCTAssertEqual("https://api.example.com/kycflow?account=GACW7NONV43MZIFHCOKCQJAKSJSISSICFVUJ2C6EZIW5773OU3HD64VI", withdrawResponse.url)
             
         } catch (let e) {
             XCTFail(e.localizedDescription)
@@ -205,7 +273,59 @@ class InteractiveInfoResponseMock: ResponsesMock {
     }
     
     func requestSuccess() -> String {
-        return "{  \"deposit\": {    \"USDC\": {      \"enabled\": true,      \"fee_fixed\": 5,      \"fee_percent\": 1,      \"min_amount\": 0.1,      \"max_amount\": 1000    },    \"ETH\": {      \"enabled\": true,      \"fee_fixed\": 0.002,      \"fee_percent\": 0    },    \"native\": {      \"enabled\": true,      \"fee_fixed\": 0.00001,      \"fee_percent\": 0    }  },  \"withdraw\": {    \"USDC\": {      \"enabled\": true,      \"fee_minimum\": 5,      \"fee_percent\": 0.5,      \"min_amount\": 0.1,      \"max_amount\": 1000    },    \"ETH\": {      \"enabled\": false    },    \"native\": {      \"enabled\": true    }  },  \"fee\": {    \"enabled\": false  },  \"features\": {    \"account_creation\": true,    \"claimable_balances\": true  }}";
+        return "{  \"deposit\": {    \"USDC\": {      \"enabled\": true,      \"fee_fixed\": 5,      \"fee_percent\": 1,      \"min_amount\": 0.1,      \"max_amount\": 1000    },    \"ETH\": {      \"enabled\": true,      \"fee_fixed\": 0.002,      \"fee_percent\": 0    },    \"native\": {      \"enabled\": true,      \"fee_fixed\": 0.00001,      \"fee_percent\": 0    }  },  \"withdraw\": {    \"USDC\": {      \"enabled\": true,      \"fee_minimum\": 5,      \"fee_percent\": 0.5,      \"min_amount\": 0.1,      \"max_amount\": 1000    },    \"ETH\": {      \"enabled\": false    },    \"native\": {      \"enabled\": true    }  },  \"fee\": {    \"enabled\": false  },  \"features\": {    \"account_creation\": true,    \"claimable_balances\": true  }}"
+        
+    }
+}
+
+class InteractiveDepositResponseMock: ResponsesMock {
+    var host: String
+    
+    init(host:String) {
+        self.host = host
+        super.init()
+    }
+    
+    override func requestMock() -> RequestMock {
+        let handler: MockHandler = { [weak self] mock, request in
+            mock.statusCode = 200
+            return self?.requestSuccess()
+        }
+        
+        return RequestMock(host: host,
+                           path: "/transactions/deposit/interactive",
+                           httpMethod: "POST",
+                           mockHandler: handler)
+    }
+    
+    func requestSuccess() -> String {
+        return "{  \"type\": \"completed\",  \"url\": \"https://api.example.com/kycflow?account=GACW7NONV43MZIFHCOKCQJAKSJSISSICFVUJ2C6EZIW5773OU3HD64VI\",  \"id\": \"82fhs729f63dh0v4\"}"
+        
+    }
+}
+
+class InteractiveWithdrawResponseMock: ResponsesMock {
+    var host: String
+    
+    init(host:String) {
+        self.host = host
+        super.init()
+    }
+    
+    override func requestMock() -> RequestMock {
+        let handler: MockHandler = { [weak self] mock, request in
+            mock.statusCode = 200
+            return self?.requestSuccess()
+        }
+        
+        return RequestMock(host: host,
+                           path: "/transactions/withdraw/interactive",
+                           httpMethod: "POST",
+                           mockHandler: handler)
+    }
+    
+    func requestSuccess() -> String {
+        return "{  \"type\": \"completed\",  \"url\": \"https://api.example.com/kycflow?account=GACW7NONV43MZIFHCOKCQJAKSJSISSICFVUJ2C6EZIW5773OU3HD64VI\",  \"id\": \"82fhs729f63dh0v4\"}"
         
     }
 }
