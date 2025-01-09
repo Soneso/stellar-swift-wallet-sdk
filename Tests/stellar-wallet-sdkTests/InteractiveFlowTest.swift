@@ -26,6 +26,8 @@ final class InteractiveFlowTestUtils {
     static let serverKeypair = try! KeyPair(secretSeed: serverSecretSeed)
     static let userKeypair = try! KeyPair(secretSeed: userSecretSeed)
     
+    static let existingTxId = "82fhs729f63dh0v4"
+    
 }
 
 final class InteractiveFlowTest: XCTestCase {
@@ -37,6 +39,7 @@ final class InteractiveFlowTest: XCTestCase {
     var infoServerMock: InteractiveInfoResponseMock!
     var depositServerMock: InteractiveDepositResponseMock!
     var withdrawServerMock: InteractiveWithdrawResponseMock!
+    var singleTxServerMock:InteractiveSingleTxResponseMock!
 
     override func setUp() {
         URLProtocol.registerClass(ServerMock.self)
@@ -52,12 +55,14 @@ final class InteractiveFlowTest: XCTestCase {
         infoServerMock = InteractiveInfoResponseMock(host: InteractiveFlowTestUtils.anchorInteractiveHost)
         depositServerMock = InteractiveDepositResponseMock(host: InteractiveFlowTestUtils.anchorInteractiveHost)
         withdrawServerMock = InteractiveWithdrawResponseMock(host: InteractiveFlowTestUtils.anchorInteractiveHost)
+        singleTxServerMock = InteractiveSingleTxResponseMock(host: InteractiveFlowTestUtils.anchorInteractiveHost)
     }
     
     func testAll() async throws {
         try await infoTest()
         try await depositTest()
         try await withdrawTest()
+        try await getSingleTxTest()
     }
     
     func infoTest() async throws {
@@ -199,6 +204,45 @@ final class InteractiveFlowTest: XCTestCase {
             XCTFail(e.localizedDescription)
         }
     }
+    
+    func getSingleTxTest() async throws {
+        let anchor = wallet.anchor(homeDomain: InteractiveFlowTestUtils.anchorHost)
+        let authKey = try SigningKeyPair(secretKey: InteractiveFlowTestUtils.userSecretSeed)
+        
+        do {
+            let authToken = try await anchor.sep10.authenticate(userKeyPair: authKey)
+            XCTAssertEqual(AuthTestUtils.jwtSuccess, authToken.jwt)
+            let tx = try await anchor.sep24.getTransaction(transactionId:InteractiveFlowTestUtils.existingTxId , authToken: authToken)
+            XCTAssertEqual(InteractiveFlowTestUtils.existingTxId, tx.id)
+            guard let tx = tx as? WithdrawalTransaction else {
+                XCTFail("not a withdrawal tx as expected")
+                return
+            }
+            XCTAssertEqual("510", tx.amountIn)
+            XCTAssertEqual("490", tx.amountOut)
+            XCTAssertEqual("5", tx.amountFee)
+            XCTAssertEqual("https://youranchor.com/tx/242523523", tx.moreInfoUrl)
+            XCTAssertEqual("17a670bc424ff5ce3b386dbfaae9990b66a2a37b4fbe51547e8794962a3f9e6a", tx.stellarTransactionId)
+            XCTAssertEqual("1941491", tx.externalTransactionId)
+            XCTAssertEqual("GBANAGOAXH5ONSBI2I6I5LHP2TCRHWMZIAMGUQH2TNKQNCOGJ7GC3ZOL", tx.withdrawAnchorAccount)
+            XCTAssertEqual("186384", tx.withdrawalMemo)
+            XCTAssertEqual("id", tx.withdrawalMemoType)
+            guard let refunds = tx.refunds else {
+                XCTFail("refunds not found as expected")
+                return
+            }
+            XCTAssertEqual("10", refunds.amountRefunded)
+            XCTAssertEqual("5", refunds.amountFee)
+            XCTAssertEqual(1, refunds.payments.count)
+            let refundPayment = refunds.payments.first!
+            XCTAssertEqual("b9d0b2292c4e09e8eb22d036171491e87b8d2086bf8b265874c8d182cb9c9020", refundPayment.id)
+            XCTAssertEqual("stellar", refundPayment.idType)
+            XCTAssertEqual("10", refundPayment.amount)
+            XCTAssertEqual("5", refundPayment.fee)
+        } catch (let e) {
+            XCTFail(e.localizedDescription)
+        }
+    }
 }
 
 class InteractiveTomlResponseMock: ResponsesMock {
@@ -327,6 +371,37 @@ class InteractiveWithdrawResponseMock: ResponsesMock {
     func requestSuccess() -> String {
         return "{  \"type\": \"completed\",  \"url\": \"https://api.example.com/kycflow?account=GACW7NONV43MZIFHCOKCQJAKSJSISSICFVUJ2C6EZIW5773OU3HD64VI\",  \"id\": \"82fhs729f63dh0v4\"}"
         
+    }
+}
+
+class InteractiveSingleTxResponseMock: ResponsesMock {
+    var host: String
+    
+    init(host:String) {
+        self.host = host
+        super.init()
+    }
+    
+    override func requestMock() -> RequestMock {
+        let handler: MockHandler = { [weak self] mock, request in
+            if let txId = mock.variables["id"], txId == InteractiveFlowTestUtils.existingTxId {
+                mock.statusCode = 200
+                return self?.requestSuccess()
+            }
+            mock.statusCode = 404
+            return """
+                {"error": "not found"}
+            """
+        }
+        
+        return RequestMock(host: host,
+                           path: "/transaction",
+                           httpMethod: "GET",
+                           mockHandler: handler)
+    }
+    
+    func requestSuccess() -> String {
+        return "{  \"transaction\": {      \"id\": \"82fhs729f63dh0v4\",      \"kind\": \"withdrawal\",      \"status\": \"completed\",      \"amount_in\": \"510\",      \"amount_out\": \"490\",      \"amount_fee\": \"5\",      \"started_at\": \"2017-03-20T17:00:02Z\",      \"completed_at\": \"2017-03-20T17:09:58Z\",      \"updated_at\": \"2017-03-20T17:09:58Z\",      \"more_info_url\": \"https://youranchor.com/tx/242523523\",      \"stellar_transaction_id\": \"17a670bc424ff5ce3b386dbfaae9990b66a2a37b4fbe51547e8794962a3f9e6a\",      \"external_transaction_id\": \"1941491\",      \"withdraw_anchor_account\": \"GBANAGOAXH5ONSBI2I6I5LHP2TCRHWMZIAMGUQH2TNKQNCOGJ7GC3ZOL\",      \"withdraw_memo\": \"186384\",      \"withdraw_memo_type\": \"id\",      \"refunds\": {        \"amount_refunded\": \"10\",        \"amount_fee\": \"5\",        \"payments\": [          {            \"id\": \"b9d0b2292c4e09e8eb22d036171491e87b8d2086bf8b265874c8d182cb9c9020\",            \"id_type\": \"stellar\",            \"amount\": \"10\",            \"fee\": \"5\"          }        ]      }    }}"
     }
 }
 

@@ -123,4 +123,33 @@ public class Sep24 {
             throw error
         }
     }
+    
+    public func getTransaction(transactionId:String, authToken:AuthToken) async throws -> InteractiveFlowTransaction {
+        
+        let tomlInfo = try await anchor.info
+        
+        guard let sep24Service = tomlInfo.services.sep24 else {
+            throw AnchorError.interactiveFlowNotSupported
+        }
+        
+        if !sep24Service.hasAuth {
+            throw AnchorAuthError.notSupported
+        }
+                
+        let info = try await anchor.info
+        guard let transferServerSep24 = info.services.sep24?.transferServerSep24 else {
+            throw AnchorError.interactiveFlowNotSupported
+        }
+        let interactiveService = InteractiveService(serviceAddress: transferServerSep24)
+        var request = Sep24TransactionRequest(jwt: authToken.jwt)
+        request.id = transactionId
+        let response = await interactiveService.getTransaction(request: request)
+        switch response {
+        case .success(let response):
+            return try InteractiveFlowTransaction.fromTx(tx: response.transaction)
+        case .failure(let error):
+            throw error
+        }
+        
+    }
 }
