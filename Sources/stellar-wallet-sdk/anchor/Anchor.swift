@@ -63,7 +63,7 @@ public class InfoHolder {
     public var homeDomain:String
     public var lang:String?
     private var cachedTomlInfo:TomlInfo?
-    private var cachedServiceInfo:AnchorServiceInfo?
+    private var cachedServiceInfo:Sep24Info?
     
     public var info:TomlInfo {
         get async throws {
@@ -82,7 +82,7 @@ public class InfoHolder {
         }
     }
     
-    public var serviceInfo:AnchorServiceInfo {
+    public var serviceInfo:Sep24Info {
         get async throws {
             if let cachedServiceInfo = self.cachedServiceInfo {
                 return cachedServiceInfo
@@ -95,7 +95,7 @@ public class InfoHolder {
                 let response = await interactiveService.info(language: self.lang)
                 switch response {
                 case .success(let response):
-                    self.cachedServiceInfo = AnchorServiceInfo(info: response)
+                    self.cachedServiceInfo = Sep24Info(info: response)
                     return self.cachedServiceInfo!
                 case .failure(let error):
                     throw error

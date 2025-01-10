@@ -8,19 +8,34 @@
 import Foundation
 import stellarsdk
 
+/// Interactive flow for deposit and withdrawal using [SEP-24](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md).
 public class Sep24 {
+    
     internal var anchor:Anchor
     
     internal init(anchor:Anchor) {
         self.anchor = anchor
     }
     
-    public var serviceInfo: AnchorServiceInfo {
+    
+    /// Get SEP-24 anchor information.
+    public var info: Sep24Info {
         get async throws {
             return try await anchor.infoHolder.serviceInfo
         }
     }
     
+    /// Initiates a deposit request.
+    ///
+    /// - Parameters:
+    ///   - assetId: Asset to deposit
+    ///   - authToken: Authentication token for the request.
+    ///   - extraFields: Additional fields for the request. E.g. SEP-9 fields
+    ///   - extraFiles: Additional files for the request. E.g. SEP-9 files
+    ///   - destinationAccount: The destination account (id) for the deposit.
+    ///   - destinationMemo: Memo information for the destination account.
+    ///   - destinationMemoType: Type of the memo if memo value provied.
+    ///   
     public func deposit(assetId:StellarAssetId,
                         authToken:AuthToken,
                         extraFields:[String:String]? = nil,
@@ -57,7 +72,7 @@ public class Sep24 {
             request.memoType = destinationMemoType.rawValue
         }
         
-        guard let asset = try await serviceInfo.depositServiceAsset(assetId: assetId) else {
+        guard let asset = try await info.depositServiceAsset(assetId: assetId) else {
             throw InteractiveFlowError.assetNotAcceptedForDeposit(assetId: assetId)
         }
         if !asset.enabled {
@@ -74,6 +89,14 @@ public class Sep24 {
         }
     }
     
+    /// Initiates a withdrawal request.
+    ///
+    /// - Parameters:
+    ///   - assetId: Asset to withdraw.
+    ///   - authToken: Authentication token for the request.
+    ///   - extraFields: Additional fields for the request. E.g. SEP-9 fields
+    ///   - extraFiles: Additional files for the request. E.g. SEP-9 files
+    ///
     public func withdraw(assetId:StellarAssetId,
                                  authToken:AuthToken,
                                  extraFields:[String:String]? = nil,
@@ -101,7 +124,7 @@ public class Sep24 {
         request.customFields = extraFields
         request.customFiles = extraFiles
         
-        guard let asset = try await serviceInfo.withdrawServiceAsset(assetId: assetId) else {
+        guard let asset = try await info.withdrawServiceAsset(assetId: assetId) else {
             throw InteractiveFlowError.assetNotAcceptedForWithdrawal(assetId: assetId)
         }
         if !asset.enabled {
@@ -118,33 +141,16 @@ public class Sep24 {
         }
     }
     
-    public func getTransaction(transactionId:String, authToken:AuthToken) async throws -> InteractiveFlowTransaction {
-        
-        let tomlInfo = try await anchor.info
-        
-        guard let transferServerSep24 = tomlInfo.services.sep24?.transferServerSep24, 
-                let sep24Service = tomlInfo.services.sep24 else {
-            throw AnchorError.interactiveFlowNotSupported
-        }
-        
-        if !sep24Service.hasAuth {
-            throw AnchorAuthError.notSupported
-        }
-                
-        let interactiveService = InteractiveService(serviceAddress: transferServerSep24)
-        var request = Sep24TransactionRequest(jwt: authToken.jwt)
-        request.id = transactionId
-        request.lang = anchor.lang
-        let response = await interactiveService.getTransaction(request: request)
-        switch response {
-        case .success(let response):
-            return try InteractiveFlowTransaction.fromTx(tx: response.transaction)
-        case .failure(let error):
-            throw error
-        }
-        
-    }
-    
+    /// Get single transaction's current status and details from the anchor.
+    ///
+    /// - Important: One of the Id parameters must be provided.
+    ///
+    /// - Parameters:
+    ///   - authToken: Authentication token for the request.
+    ///   - transactionId: The anchor's transaction Id.
+    ///   - stellarTransactionId: The Stellar transaction Id.
+    ///   - externalTransactionId: The external transaction Id.
+    ///
     public func getTransactionBy(authToken:AuthToken,
                                  transactionId:String? = nil,
                                  stellarTransactionId:String? = nil,
@@ -188,8 +194,19 @@ public class Sep24 {
         
     }
     
-    public func getTransactionsForAsset(asset:AssetId,
-                                        authToken:AuthToken,
+    /// Get account's transactions specified by asset and other params.
+    ///
+    ///
+    /// - Parameters:
+    ///   - authToken: Authentication token for the request.
+    ///   - asset: The target asset to query for
+    ///   - noOlderThen: The response should contain transactions starting on or after this date & time.
+    ///   - limit: The response should contain at most 'limit' transactions.
+    ///   - kind: The kind of transaction that is desired. ( 'deposit' or  'withdrawal').
+    ///   - pagingId: The response should contain transactions starting prior to this ID (exclusive).
+    ///
+    public func getTransactionsForAsset(authToken:AuthToken,
+                                        asset:AssetId,
                                         noOlderThen:Date? = nil,
                                         limit:Int? = nil,
                                         kind:TransactionKind? = nil,

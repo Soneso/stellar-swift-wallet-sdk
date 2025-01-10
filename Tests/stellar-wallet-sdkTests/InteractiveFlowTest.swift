@@ -65,15 +65,14 @@ final class InteractiveFlowTest: XCTestCase {
         try await infoTest()
         try await depositTest()
         try await withdrawTest()
-        try await getSingleTxTest()
-        try await getTxByTest()
-        try await getTxForAssetTest()
+        try await getTransactionTest()
+        try await getTransactionsForAssetTest()
     }
     
     func infoTest() async throws {
         let anchor = wallet.anchor(homeDomain: InteractiveFlowTestUtils.anchorHost)
         do {
-            let info = try await anchor.sep24.serviceInfo
+            let info = try await anchor.sep24.info
             XCTAssertEqual(3, info.deposit.count)
             
             guard let depositAssetUSDC = info.deposit["USDC"] else {
@@ -230,14 +229,14 @@ final class InteractiveFlowTest: XCTestCase {
         }
     }
     
-    func getSingleTxTest() async throws {
+    func getTransactionTest() async throws {
         let anchor = wallet.anchor(homeDomain: InteractiveFlowTestUtils.anchorHost)
         let authKey = try SigningKeyPair(secretKey: InteractiveFlowTestUtils.userSecretSeed)
         
         do {
             let authToken = try await anchor.sep10.authenticate(userKeyPair: authKey)
             XCTAssertEqual(AuthTestUtils.jwtSuccess, authToken.jwt)
-            let tx = try await anchor.sep24.getTransaction(transactionId:InteractiveFlowTestUtils.existingTxId , authToken: authToken)
+            let tx = try await anchor.sep24.getTransactionBy(authToken: authToken, transactionId:InteractiveFlowTestUtils.existingTxId)
             XCTAssertEqual(InteractiveFlowTestUtils.existingTxId, tx.id)
             guard let tx = tx as? WithdrawalTransaction else {
                 XCTFail("not a withdrawal tx as expected")
@@ -264,41 +263,26 @@ final class InteractiveFlowTest: XCTestCase {
             XCTAssertEqual("stellar", refundPayment.idType)
             XCTAssertEqual("10", refundPayment.amount)
             XCTAssertEqual("5", refundPayment.fee)
+            
+            let tx2 = try await anchor.sep24.getTransactionBy(authToken: authToken,
+                                                              stellarTransactionId: InteractiveFlowTestUtils.extistingStellarTxId)
+            XCTAssertEqual(InteractiveFlowTestUtils.existingTxId, tx2.id)
+            
         } catch (let e) {
             XCTFail(e.localizedDescription)
         }
     }
     
-    func getTxByTest() async throws {
+    func getTransactionsForAssetTest() async throws {
         let anchor = wallet.anchor(homeDomain: InteractiveFlowTestUtils.anchorHost)
         let authKey = try SigningKeyPair(secretKey: InteractiveFlowTestUtils.userSecretSeed)
         
         do {
             let authToken = try await anchor.sep10.authenticate(userKeyPair: authKey)
             XCTAssertEqual(AuthTestUtils.jwtSuccess, authToken.jwt)
-            let tx = try await anchor.sep24.getTransactionBy(authToken: authToken,
-                                                             stellarTransactionId: InteractiveFlowTestUtils.extistingStellarTxId)
-            XCTAssertEqual(InteractiveFlowTestUtils.existingTxId, tx.id)
-            guard let tx = tx as? WithdrawalTransaction else {
-                XCTFail("not a withdrawal tx as expected")
-                return
-            }
-            XCTAssertEqual(InteractiveFlowTestUtils.existingTxId, tx.id)
-        } catch (let e) {
-            XCTFail(e.localizedDescription)
-        }
-    }
-    
-    func getTxForAssetTest() async throws {
-        let anchor = wallet.anchor(homeDomain: InteractiveFlowTestUtils.anchorHost)
-        let authKey = try SigningKeyPair(secretKey: InteractiveFlowTestUtils.userSecretSeed)
-        
-        do {
-            let authToken = try await anchor.sep10.authenticate(userKeyPair: authKey)
-            XCTAssertEqual(AuthTestUtils.jwtSuccess, authToken.jwt)
-            let txs = try await anchor.sep24.getTransactionsForAsset(asset: IssuedAssetId(code: "USDC",
-                                                                                         issuer: "GCZJM35NKGVK47BB4SPBDV25477PZYIYPVVG453LPYFNXLS3FGHDXOCM"),
-                                                                    authToken: authToken)
+            let txs = try await anchor.sep24.getTransactionsForAsset(authToken: authToken,
+                                                                     asset: IssuedAssetId(code: "USDC",
+                                                                                         issuer: "GCZJM35NKGVK47BB4SPBDV25477PZYIYPVVG453LPYFNXLS3FGHDXOCM"))
         
             guard let tx = txs.first else {
                 XCTFail("no transaction obtained as expected")

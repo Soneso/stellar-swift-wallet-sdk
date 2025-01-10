@@ -28,7 +28,7 @@ Available anchor services and information about them. For example, interactive d
 using [SEP-024](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md):
 
 ```swift
-let serviceInfo = try await anchor.sep24.serviceInfo
+let sep24Info = try await anchor.sep24.info
 ```
 
 Interactive deposit and withdrawal using [SEP-024](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md):
@@ -72,8 +72,8 @@ depositResponse = try await anchor.sep24.deposit(assetId: usdcAssetId,
 Get single transaction's current status and details:
 
 ```swift
-let transaction = try await anchor.sep24.getTransaction(transactionId:"12345",
-                                                        authToken: authToken)
+let transaction = try await anchor.sep24.getTransactionBy(authToken: authToken,
+                                                          transactionId:"12345")
 ```
 
 Get transaction by stellar transaction id:
@@ -94,8 +94,8 @@ Get account transactions for specified asset:
 
 ```swift
 
-let transactions = try await anchor.sep24.getTransactionsForAsset(asset: asset,
-                                                                  authToken: authToken)
+let transactions = try await anchor.sep24.getTransactionsForAsset(authToken: authToken,
+                                                                  asset: asset)
 ```
 
 Watch transaction:

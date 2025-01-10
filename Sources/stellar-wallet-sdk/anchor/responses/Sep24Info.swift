@@ -1,5 +1,5 @@
 //
-//  AnchorServiceInfo.swift
+//  Sep24Info.swift
 //
 //
 //  Created by Christian Rogobete on 08.01.25.
@@ -8,43 +8,43 @@
 import Foundation
 import stellarsdk
 
-public class AnchorServiceInfo {
-    public let deposit:[String:AnchorServiceAsset]
-    public let withdraw:[String:AnchorServiceAsset]
-    public let fee:AnchorServiceFee
-    public let features:AnchorServiceFeatures?
+public class Sep24Info {
+    public let deposit:[String:Sep24AssetInfo]
+    public let withdraw:[String:Sep24AssetInfo]
+    public let fee:Sep24ServiceFee
+    public let features:Sep24ServiceFeatures?
     
     internal init(info:Sep24InfoResponse) {
-        var deposit:[String:AnchorServiceAsset] = [:]
+        var deposit:[String:Sep24AssetInfo] = [:]
         if let depositAssets = info.depositAssets {
             for (key, val) in depositAssets {
-                deposit[key] = AnchorServiceAsset(depositAsset: val)
+                deposit[key] = Sep24AssetInfo(depositAsset: val)
             }
         }
         self.deposit = deposit
         
-        var withdraw:[String:AnchorServiceAsset] = [:]
+        var withdraw:[String:Sep24AssetInfo] = [:]
         if let withdrawAssets = info.withdrawAssets {
             for (key, val) in withdrawAssets {
-                withdraw[key] = AnchorServiceAsset(withdrawAsset: val)
+                withdraw[key] = Sep24AssetInfo(withdrawAsset: val)
             }
         }
         self.withdraw = withdraw
         
         if let feeInfo = info.feeEndpointInfo {
-            self.fee = AnchorServiceFee(feeInfo: feeInfo)
+            self.fee = Sep24ServiceFee(feeInfo: feeInfo)
         } else {
-            self.fee = AnchorServiceFee(enabled: false, authenticationRequired: false)
+            self.fee = Sep24ServiceFee(enabled: false, authenticationRequired: false)
         }
         
         if let featureFlags = info.featureFlags {
-            self.features = AnchorServiceFeatures(flags: featureFlags)
+            self.features = Sep24ServiceFeatures(flags: featureFlags)
         } else {
             self.features = nil
         }
     }
     
-    public func depositServiceAsset(assetId:StellarAssetId) -> AnchorServiceAsset? {
+    public func depositServiceAsset(assetId:StellarAssetId) -> Sep24AssetInfo? {
         var assetKey:String = assetId.id
         if let issuedAssetId = assetId as? IssuedAssetId {
             assetKey = issuedAssetId.code
@@ -52,7 +52,7 @@ public class AnchorServiceInfo {
         return deposit[assetKey]
     }
     
-    public func withdrawServiceAsset(assetId:StellarAssetId) -> AnchorServiceAsset? {
+    public func withdrawServiceAsset(assetId:StellarAssetId) -> Sep24AssetInfo? {
         var assetKey:String = assetId.id
         if let issuedAssetId = assetId as? IssuedAssetId {
             assetKey = issuedAssetId.code
@@ -61,7 +61,7 @@ public class AnchorServiceInfo {
     }
 }
 
-public class AnchorServiceAsset {
+public class Sep24AssetInfo {
     
     public let enabled:Bool
     public let minAmount:Double?
@@ -104,7 +104,7 @@ public class AnchorServiceAsset {
     }
 }
 
-public class AnchorServiceFeatures {
+public class Sep24ServiceFeatures {
 
     public let accountCreation:Bool
     public let claimableBalances:Bool
@@ -120,7 +120,7 @@ public class AnchorServiceFeatures {
     }
 }
 
-public class AnchorServiceFee {
+public class Sep24ServiceFee {
     
     public let enabled:Bool
     public let authenticationRequired:Bool

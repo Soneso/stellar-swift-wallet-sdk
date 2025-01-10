@@ -1,6 +1,6 @@
 //
 //  TransactionKind.swift
-//  
+//
 //
 //  Created by Christian Rogobete on 09.01.25.
 //
