@@ -73,6 +73,7 @@ final class AuthTest: XCTestCase {
     func testAll() async throws {
         try await basicSuccessTest()
         try await clientDomainSuccessTest()
+        try await clientDomainRemoteTest()
         try await basicMemoSuccessTest()
         try await getChallengeInvalidSeqNrTest()
         try await getChallengeInvalidSecondOpSrcAccTest()
@@ -111,6 +112,26 @@ final class AuthTest: XCTestCase {
             
             XCTAssertEqual(AuthTestUtils.jwtSuccess, authToken.jwt)
         } catch (let e) {
+            XCTFail(e.localizedDescription)
+        }
+    }
+    
+    func clientDomainRemoteTest() async throws {
+        let anchor = wallet.anchor(homeDomain: "testanchor.stellar.org")
+        let authKey = wallet.stellar.account.createKeyPair()
+        
+        // Client domain signer src: https://replit.com/@crogobete/ClientDomainSigner#main.py
+        
+        let clientDomain = "client-domain-signer.replit.app"
+        let clientDomainSigner = try DomainSigner(url: "https://\(clientDomain)/sign" , 
+                                                  requestHeaders: ["Authorization" : "Bearer 123456789"])
+        do {
+            let sep10 = try await anchor.sep10
+            let authToken = try await sep10.authenticate(userKeyPair: authKey,
+                                                         clientDomain: clientDomain,
+                                                         clientDomainSigner: clientDomainSigner)
+            XCTAssertFalse(authToken.jwt.isEmpty)
+        } catch let e {
             XCTFail(e.localizedDescription)
         }
     }

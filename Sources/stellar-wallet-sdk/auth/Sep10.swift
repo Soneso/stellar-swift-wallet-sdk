@@ -58,6 +58,7 @@ public class Sep10 {
                                                   memo: memoId,
                                                   signers: [userKeyPair.keyPair],
                                                   homeDomain: serverHomeDomain,
+                                                  clientDomain: clientDomain,
                                                   clientDomainAccountKeyPair: clientDomainKeyPair,
                                                   clientDomainSigningFunction: { (txEnvelopeXdr) async throws in
                 return try await clientDomainSigner.signWithDomainAccount(transactionXdr: txEnvelopeXdr,

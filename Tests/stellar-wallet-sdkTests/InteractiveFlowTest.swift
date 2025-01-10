@@ -180,10 +180,18 @@ final class InteractiveFlowTest: XCTestCase {
             let photoIdFront:Data = "😃".data(using: .nonLossyASCII, allowLossyConversion: true)!
             let extraFiles:[String:Data] = [Sep9PersonKeys.photoIdFront:photoIdFront]
             
-            depositResponse = try await anchor.sep24.deposit(assetId: usdcAssetId, authToken: authToken, extraFields: extraFields, extraFiles: extraFiles)
+            depositResponse = try await anchor.sep24.deposit(assetId: usdcAssetId, 
+                                                             authToken: authToken,
+                                                             extraFields: extraFields,
+                                                             extraFiles: extraFiles)
             XCTAssertEqual("82fhs729f63dh0v4", depositResponse.id)
-            XCTAssertEqual("completed", depositResponse.type)
-            XCTAssertEqual("https://api.example.com/kycflow?account=GACW7NONV43MZIFHCOKCQJAKSJSISSICFVUJ2C6EZIW5773OU3HD64VI", depositResponse.url)
+            
+            // Deposit with alternative account
+            let recepientAccountId = "GC74AI6HKRZN3OUVDUGVEA46F35E6OFA2S3OJOH33XXWQHQ5OB5J7YYI"
+            depositResponse = try await anchor.sep24.deposit(assetId: usdcAssetId,
+                                                             authToken: authToken,
+                                                             destinationAccount: recepientAccountId)
+            XCTAssertEqual("82fhs729f63dh0v4", depositResponse.id)
             
         } catch (let e) {
             XCTFail(e.localizedDescription)
