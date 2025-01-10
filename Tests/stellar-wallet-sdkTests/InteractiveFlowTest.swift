@@ -167,8 +167,20 @@ final class InteractiveFlowTest: XCTestCase {
             }
             
             let usdcAssetId = try usdcCurrencyInfo.assetId
+        
+            var depositResponse = try await anchor.sep24.deposit(assetId: usdcAssetId, authToken: authToken)
+            XCTAssertEqual("82fhs729f63dh0v4", depositResponse.id)
+            XCTAssertEqual("completed", depositResponse.type)
+            XCTAssertEqual("https://api.example.com/kycflow?account=GACW7NONV43MZIFHCOKCQJAKSJSISSICFVUJ2C6EZIW5773OU3HD64VI", depositResponse.url)
             
-            let depositResponse = try await anchor.sep24.deposit(assetId: usdcAssetId, authToken: authToken)
+            // optionally, one can also add sep-9 extra fields and/or files
+            let extraFields:[String:String] = [Sep9PersonKeys.emailAddress:"mail@example.com",
+                                               Sep9PersonKeys.mobileNumber:"+12383844421"]
+            
+            let photoIdFront:Data = "😃".data(using: .nonLossyASCII, allowLossyConversion: true)!
+            let extraFiles:[String:Data] = [Sep9PersonKeys.photoIdFront:photoIdFront]
+            
+            depositResponse = try await anchor.sep24.deposit(assetId: usdcAssetId, authToken: authToken, extraFields: extraFields, extraFiles: extraFiles)
             XCTAssertEqual("82fhs729f63dh0v4", depositResponse.id)
             XCTAssertEqual("completed", depositResponse.type)
             XCTAssertEqual("https://api.example.com/kycflow?account=GACW7NONV43MZIFHCOKCQJAKSJSISSICFVUJ2C6EZIW5773OU3HD64VI", depositResponse.url)
