@@ -27,6 +27,7 @@ final class InteractiveFlowTestUtils {
     static let userKeypair = try! KeyPair(secretSeed: userSecretSeed)
     
     static let existingTxId = "82fhs729f63dh0v4"
+    static let extistingStellarTxId = "17a670bc424ff5ce3b386dbfaae9990b66a2a37b4fbe51547e8794962a3f9e6a"
     
 }
 
@@ -63,6 +64,7 @@ final class InteractiveFlowTest: XCTestCase {
         try await depositTest()
         try await withdrawTest()
         try await getSingleTxTest()
+        try await getTxByTest()
     }
     
     func infoTest() async throws {
@@ -243,6 +245,26 @@ final class InteractiveFlowTest: XCTestCase {
             XCTFail(e.localizedDescription)
         }
     }
+    
+    func getTxByTest() async throws {
+        let anchor = wallet.anchor(homeDomain: InteractiveFlowTestUtils.anchorHost)
+        let authKey = try SigningKeyPair(secretKey: InteractiveFlowTestUtils.userSecretSeed)
+        
+        do {
+            let authToken = try await anchor.sep10.authenticate(userKeyPair: authKey)
+            XCTAssertEqual(AuthTestUtils.jwtSuccess, authToken.jwt)
+            let tx = try await anchor.sep24.getTransactionBy(authToken: authToken,
+                                                             stellarTransactionId: InteractiveFlowTestUtils.extistingStellarTxId)
+            XCTAssertEqual(InteractiveFlowTestUtils.existingTxId, tx.id)
+            guard let tx = tx as? WithdrawalTransaction else {
+                XCTFail("not a withdrawal tx as expected")
+                return
+            }
+            XCTAssertEqual(InteractiveFlowTestUtils.existingTxId, tx.id)
+        } catch (let e) {
+            XCTFail(e.localizedDescription)
+        }
+    }
 }
 
 class InteractiveTomlResponseMock: ResponsesMock {
@@ -385,6 +407,10 @@ class InteractiveSingleTxResponseMock: ResponsesMock {
     override func requestMock() -> RequestMock {
         let handler: MockHandler = { [weak self] mock, request in
             if let txId = mock.variables["id"], txId == InteractiveFlowTestUtils.existingTxId {
+                mock.statusCode = 200
+                return self?.requestSuccess()
+            } else if let stellarTransactionId = mock.variables["stellar_transaction_id"],
+                        stellarTransactionId == InteractiveFlowTestUtils.extistingStellarTxId {
                 mock.statusCode = 200
                 return self?.requestSuccess()
             }

@@ -143,6 +143,51 @@ public class Sep24 {
         let interactiveService = InteractiveService(serviceAddress: transferServerSep24)
         var request = Sep24TransactionRequest(jwt: authToken.jwt)
         request.id = transactionId
+        request.lang = anchor.lang
+        let response = await interactiveService.getTransaction(request: request)
+        switch response {
+        case .success(let response):
+            return try InteractiveFlowTransaction.fromTx(tx: response.transaction)
+        case .failure(let error):
+            throw error
+        }
+        
+    }
+    
+    public func getTransactionBy(authToken:AuthToken,
+                                 transactionId:String? = nil,
+                                 stellarTransactionId:String? = nil,
+                                 externalTransactionId:String? = nil) async throws -> InteractiveFlowTransaction {
+        
+        if (transactionId == nil && stellarTransactionId == nil && externalTransactionId == nil) {
+            throw ValidationError.invalidArgument(message: "One of transactionId, stellarTransactionId or externalTransactionId is required.")
+        }
+        
+        let tomlInfo = try await anchor.info
+        
+        guard let sep24Service = tomlInfo.services.sep24 else {
+            throw AnchorError.interactiveFlowNotSupported
+        }
+        
+        if !sep24Service.hasAuth {
+            throw AnchorAuthError.notSupported
+        }
+                
+        let info = try await anchor.info
+        guard let transferServerSep24 = info.services.sep24?.transferServerSep24 else {
+            throw AnchorError.interactiveFlowNotSupported
+        }
+        let interactiveService = InteractiveService(serviceAddress: transferServerSep24)
+        var request = Sep24TransactionRequest(jwt: authToken.jwt)
+        if let transactionId = transactionId {
+            request.id = transactionId
+        } else if let stellarTransactionId = stellarTransactionId {
+            request.stellarTransactionId = stellarTransactionId
+        } else if let externalTransactionId = externalTransactionId {
+            request.externalTransactionId = externalTransactionId
+        }
+        request.lang = anchor.lang
+        
         let response = await interactiveService.getTransaction(request: request)
         switch response {
         case .success(let response):
