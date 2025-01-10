@@ -31,7 +31,8 @@ public class Sep24 {
         
         let tomlInfo = try await anchor.info
         
-        guard let sep24Service = tomlInfo.services.sep24 else {
+        guard let transferServerSep24 = tomlInfo.services.sep24?.transferServerSep24,
+                let sep24Service = tomlInfo.services.sep24 else {
             throw AnchorError.interactiveFlowNotSupported
         }
         
@@ -63,10 +64,6 @@ public class Sep24 {
             throw InteractiveFlowError.assetNotEnabledForDeposit(assetId: assetId)
         }
         
-        let info = try await anchor.info
-        guard let transferServerSep24 = info.services.sep24?.transferServerSep24 else {
-            throw AnchorError.interactiveFlowNotSupported
-        }
         let interactiveService = InteractiveService(serviceAddress: transferServerSep24)
         let response = await interactiveService.deposit(request: request)
         switch response {
@@ -83,7 +80,8 @@ public class Sep24 {
                                  extraFiles:[String:Data]? = nil) async throws -> InteractiveFlowResponse {
         let tomlInfo = try await anchor.info
         
-        guard let sep24Service = tomlInfo.services.sep24 else {
+        guard let transferServerSep24 = tomlInfo.services.sep24?.transferServerSep24,
+                let sep24Service = tomlInfo.services.sep24 else {
             throw AnchorError.interactiveFlowNotSupported
         }
         
@@ -110,10 +108,6 @@ public class Sep24 {
             throw InteractiveFlowError.assetNotEnabledForWithdrawal(assetId: assetId)
         }
         
-        let info = try await anchor.info
-        guard let transferServerSep24 = info.services.sep24?.transferServerSep24 else {
-            throw AnchorError.interactiveFlowNotSupported
-        }
         let interactiveService = InteractiveService(serviceAddress: transferServerSep24)
         let response = await interactiveService.withdraw(request: request)
         switch response {
@@ -128,7 +122,8 @@ public class Sep24 {
         
         let tomlInfo = try await anchor.info
         
-        guard let sep24Service = tomlInfo.services.sep24 else {
+        guard let transferServerSep24 = tomlInfo.services.sep24?.transferServerSep24, 
+                let sep24Service = tomlInfo.services.sep24 else {
             throw AnchorError.interactiveFlowNotSupported
         }
         
@@ -136,10 +131,6 @@ public class Sep24 {
             throw AnchorAuthError.notSupported
         }
                 
-        let info = try await anchor.info
-        guard let transferServerSep24 = info.services.sep24?.transferServerSep24 else {
-            throw AnchorError.interactiveFlowNotSupported
-        }
         let interactiveService = InteractiveService(serviceAddress: transferServerSep24)
         var request = Sep24TransactionRequest(jwt: authToken.jwt)
         request.id = transactionId
@@ -159,24 +150,23 @@ public class Sep24 {
                                  stellarTransactionId:String? = nil,
                                  externalTransactionId:String? = nil) async throws -> InteractiveFlowTransaction {
         
-        if (transactionId == nil && stellarTransactionId == nil && externalTransactionId == nil) {
+        if (transactionId == nil &&
+            stellarTransactionId == nil &&
+            externalTransactionId == nil) {
             throw ValidationError.invalidArgument(message: "One of transactionId, stellarTransactionId or externalTransactionId is required.")
         }
         
         let tomlInfo = try await anchor.info
         
-        guard let sep24Service = tomlInfo.services.sep24 else {
+        guard let transferServerSep24 = tomlInfo.services.sep24?.transferServerSep24,
+                let sep24Service = tomlInfo.services.sep24 else {
             throw AnchorError.interactiveFlowNotSupported
         }
         
         if !sep24Service.hasAuth {
             throw AnchorAuthError.notSupported
         }
-                
-        let info = try await anchor.info
-        guard let transferServerSep24 = info.services.sep24?.transferServerSep24 else {
-            throw AnchorError.interactiveFlowNotSupported
-        }
+        
         let interactiveService = InteractiveService(serviceAddress: transferServerSep24)
         var request = Sep24TransactionRequest(jwt: authToken.jwt)
         if let transactionId = transactionId {
@@ -196,5 +186,46 @@ public class Sep24 {
             throw error
         }
         
+    }
+    
+    public func getTransactionsForAsset(asset:AssetId,
+                                        authToken:AuthToken,
+                                        noOlderThen:Date? = nil,
+                                        limit:Int? = nil,
+                                        kind:TransactionKind? = nil,
+                                        pagingId:String? = nil) async throws -> [InteractiveFlowTransaction] {
+        
+        let tomlInfo = try await anchor.info
+        
+        guard let transferServerSep24 = tomlInfo.services.sep24?.transferServerSep24 else {
+            throw AnchorError.interactiveFlowNotSupported
+        }
+        
+        let interactiveService = InteractiveService(serviceAddress: transferServerSep24)
+        var assetCode = asset.id
+        if let asset  = asset as? IssuedAssetId {
+            assetCode = asset.code
+        }
+        
+        var request = Sep24TransactionsRequest(jwt: authToken.jwt, assetCode: assetCode)
+        request.noOlderThan = noOlderThen
+        request.lang = anchor.lang
+        request.limit = limit
+        if let kind = kind {
+            request.kind = kind.rawValue
+        }
+        request.pagingId = pagingId
+        
+        let response = await interactiveService.getTransactions(request: request)
+        switch response {
+        case .success(let response):
+            var result:[InteractiveFlowTransaction] = []
+            for tx in response.transactions {
+                result.append(try InteractiveFlowTransaction.fromTx(tx: tx))
+            }
+            return result
+        case .failure(let error):
+            throw error
+        }
     }
 }

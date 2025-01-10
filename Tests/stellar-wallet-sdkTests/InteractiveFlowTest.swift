@@ -41,6 +41,7 @@ final class InteractiveFlowTest: XCTestCase {
     var depositServerMock: InteractiveDepositResponseMock!
     var withdrawServerMock: InteractiveWithdrawResponseMock!
     var singleTxServerMock:InteractiveSingleTxResponseMock!
+    var multipeTxServerMock:InteractiveMultipleTxResponseMock!
 
     override func setUp() {
         URLProtocol.registerClass(ServerMock.self)
@@ -57,6 +58,7 @@ final class InteractiveFlowTest: XCTestCase {
         depositServerMock = InteractiveDepositResponseMock(host: InteractiveFlowTestUtils.anchorInteractiveHost)
         withdrawServerMock = InteractiveWithdrawResponseMock(host: InteractiveFlowTestUtils.anchorInteractiveHost)
         singleTxServerMock = InteractiveSingleTxResponseMock(host: InteractiveFlowTestUtils.anchorInteractiveHost)
+        multipeTxServerMock = InteractiveMultipleTxResponseMock(host: InteractiveFlowTestUtils.anchorInteractiveHost)
     }
     
     func testAll() async throws {
@@ -65,6 +67,7 @@ final class InteractiveFlowTest: XCTestCase {
         try await withdrawTest()
         try await getSingleTxTest()
         try await getTxByTest()
+        try await getTxForAssetTest()
     }
     
     func infoTest() async throws {
@@ -265,6 +268,27 @@ final class InteractiveFlowTest: XCTestCase {
             XCTFail(e.localizedDescription)
         }
     }
+    
+    func getTxForAssetTest() async throws {
+        let anchor = wallet.anchor(homeDomain: InteractiveFlowTestUtils.anchorHost)
+        let authKey = try SigningKeyPair(secretKey: InteractiveFlowTestUtils.userSecretSeed)
+        
+        do {
+            let authToken = try await anchor.sep10.authenticate(userKeyPair: authKey)
+            XCTAssertEqual(AuthTestUtils.jwtSuccess, authToken.jwt)
+            let txs = try await anchor.sep24.getTransactionsForAsset(asset: IssuedAssetId(code: "USDC",
+                                                                                         issuer: "GCZJM35NKGVK47BB4SPBDV25477PZYIYPVVG453LPYFNXLS3FGHDXOCM"),
+                                                                    authToken: authToken)
+        
+            guard let tx = txs.first else {
+                XCTFail("no transaction obtained as expected")
+                return
+            }
+            XCTAssertEqual(InteractiveFlowTestUtils.existingTxId, tx.id)
+        } catch (let e) {
+            XCTFail(e.localizedDescription)
+        }
+    }
 }
 
 class InteractiveTomlResponseMock: ResponsesMock {
@@ -428,6 +452,37 @@ class InteractiveSingleTxResponseMock: ResponsesMock {
     
     func requestSuccess() -> String {
         return "{  \"transaction\": {      \"id\": \"82fhs729f63dh0v4\",      \"kind\": \"withdrawal\",      \"status\": \"completed\",      \"amount_in\": \"510\",      \"amount_out\": \"490\",      \"amount_fee\": \"5\",      \"started_at\": \"2017-03-20T17:00:02Z\",      \"completed_at\": \"2017-03-20T17:09:58Z\",      \"updated_at\": \"2017-03-20T17:09:58Z\",      \"more_info_url\": \"https://youranchor.com/tx/242523523\",      \"stellar_transaction_id\": \"17a670bc424ff5ce3b386dbfaae9990b66a2a37b4fbe51547e8794962a3f9e6a\",      \"external_transaction_id\": \"1941491\",      \"withdraw_anchor_account\": \"GBANAGOAXH5ONSBI2I6I5LHP2TCRHWMZIAMGUQH2TNKQNCOGJ7GC3ZOL\",      \"withdraw_memo\": \"186384\",      \"withdraw_memo_type\": \"id\",      \"refunds\": {        \"amount_refunded\": \"10\",        \"amount_fee\": \"5\",        \"payments\": [          {            \"id\": \"b9d0b2292c4e09e8eb22d036171491e87b8d2086bf8b265874c8d182cb9c9020\",            \"id_type\": \"stellar\",            \"amount\": \"10\",            \"fee\": \"5\"          }        ]      }    }}"
+    }
+}
+
+class InteractiveMultipleTxResponseMock: ResponsesMock {
+    var host: String
+    
+    init(host:String) {
+        self.host = host
+        super.init()
+    }
+    
+    override func requestMock() -> RequestMock {
+        let handler: MockHandler = { [weak self] mock, request in
+            if let assetCode =  mock.variables["asset_code"], assetCode == "USDC" {
+                mock.statusCode = 200
+                return self?.requestPendingTrsansactions1()
+            }
+            mock.statusCode = 404
+            return """
+                {"error": "not found"}
+            """
+        }
+        
+        return RequestMock(host: host,
+                           path: "/transactions",
+                           httpMethod: "GET",
+                           mockHandler: handler)
+    }
+    
+    func requestPendingTrsansactions1() -> String {
+        return "{  \"transactions\": [    {      \"id\": \"82fhs729f63dh0v4\",      \"kind\": \"deposit\",      \"status\": \"pending_anchor\",      \"status_eta\": 3600,      \"external_transaction_id\": \"2dd16cb409513026fbe7defc0c6f826c2d2c65c3da993f747d09bf7dafd31093\",      \"more_info_url\": \"https://youranchor.com/tx/242523523\",      \"amount_in\": \"18.34\",      \"amount_out\": \"18.24\",      \"amount_fee\": \"0.1\",      \"started_at\": \"2017-03-20T17:05:32Z\",      \"claimable_balance_id\": null    },    {      \"id\": \"82fhs729f63dh0v4\",      \"kind\": \"withdrawal\",      \"status\": \"pending_anchor\",      \"amount_in\": \"510\",      \"amount_out\": \"490\",      \"amount_fee\": \"5\",      \"started_at\": \"2017-03-20T17:00:02Z\",       \"updated_at\": \"2017-03-20T17:09:58Z\",      \"more_info_url\": \"https://youranchor.com/tx/242523523\",      \"stellar_transaction_id\": \"17a670bc424ff5ce3b386dbfaae9990b66a2a37b4fbe51547e8794962a3f9e6a\",      \"external_transaction_id\": \"1941491\",      \"withdraw_anchor_account\": \"GBANAGOAXH5ONSBI2I6I5LHP2TCRHWMZIAMGUQH2TNKQNCOGJ7GC3ZOL\",      \"withdraw_memo\": \"186384\",      \"withdraw_memo_type\": \"id\",      \"refunds\": {        \"amount_refunded\": \"10\",        \"amount_fee\": \"5\",        \"payments\": [          {            \"id\": \"b9d0b2292c4e09e8eb22d036171491e87b8d2086bf8b265874c8d182cb9c9020\",            \"id_type\": \"stellar\",            \"amount\": \"10\",            \"fee\": \"5\"          }        ]      }    },    {      \"id\": \"92fhs729f63dh0v3\",      \"kind\": \"deposit\",      \"status\": \"pending_anchor\",      \"amount_in\": \"510\",      \"amount_out\": \"490\",      \"amount_fee\": \"5\",      \"started_at\": \"2017-03-20T17:00:02Z\",       \"updated_at\": \"2017-03-20T17:09:58Z\",      \"more_info_url\": \"https://youranchor.com/tx/242523526\",      \"stellar_transaction_id\": \"17a670bc424ff5ce3b386dbfaae9990b66a2a37b4fbe51547e8794962a3f9e6a\",      \"external_transaction_id\": \"1947101\",      \"refunds\": {        \"amount_refunded\": \"10\",        \"amount_fee\": \"5\",        \"payments\": [          {            \"id\": \"1937103\",            \"id_type\": \"external\",            \"amount\": \"10\",            \"fee\": \"5\"          }        ]      }    },    {      \"id\": \"92fhs729f63dh0v3\",      \"kind\": \"deposit\",      \"status\": \"pending_anchor\",      \"amount_in\": \"510\",      \"amount_out\": \"490\",      \"amount_fee\": \"5\",      \"started_at\": \"2017-03-20T17:00:02Z\",      \"updated_at\": \"2017-03-20T17:05:58Z\",      \"more_info_url\": \"https://youranchor.com/tx/242523526\",      \"stellar_transaction_id\": \"17a670bc424ff5ce3b386dbfaae9990b66a2a37b4fbe51547e8794962a3f9e6a\",      \"external_transaction_id\": \"1947101\",      \"refunds\": {        \"amount_refunded\": \"10\",        \"amount_fee\": \"5\",        \"payments\": [          {            \"id\": \"1937103\",            \"id_type\": \"external\",            \"amount\": \"10\",            \"fee\": \"5\"          }        ]      }    }  ]}"
     }
 }
 
