@@ -245,4 +245,19 @@ public class Sep24 {
             throw error
         }
     }
+    
+    /// Creates new transaction watcher.
+    /// You can pass the pollInterval in which requests to the Anchor are being made.
+    /// If not specified, it defaults to 5 seconds. You can also pass your own exceptionHandler.
+    /// By default, RetryExceptionHandler is being used.
+    ///
+    /// - Parameters:
+    ///   - pollDelay: Interval in which requests to the Anchor are being made. E.g 5 (seconds)
+    ///   - exceptionHandler: WalletExceptionHandler that handles any exceptions that may occur during the polling. E.g. RetryExceptionHandler
+    ///   
+    public func watcher(pollDelay:Double = 5.0,
+                        exceptionHandler:WalletExceptionHandler = RetryExceptionHandler()) -> Watcher {
+        
+        return Watcher(anchor: anchor, pollDelay: pollDelay, exceptionHandler: exceptionHandler)
+    }
 }

@@ -101,13 +101,49 @@ let transactions = try await anchor.sep24.getTransactionsForAsset(authToken: aut
 Watch transaction:
 
 ```swift
-// not yet implemented
+let watcher = anchor.sep24.watcher()
+let result = watcher.watchOneTransaction(authToken: token, 
+                                         id: "transaction id")
+
+NotificationCenter.default.addObserver(self,
+                                       selector: #selector(handleEvent(_:)),
+                                       name: result.notificationName,
+                                       object: nil)
+                                       
+/// ...
+@objc public func handleEvent(_ notification: Notification) {
+    if let statusChange = notification.object as? StatusChange {
+        print("Status change to \(statusChange.status.rawValue). Transaction: \(statusChange.transaction.id)")
+    } else if let _ = notification.object as? ExceptionHandlerExit {
+        print("Exception handler exited the job")
+    } else if let _ = notification.object as? NotificationsClosed {
+        print("Notifications closed. Job is done")
+    }
+}
 ```
 
 Watch asset:
 
 ```swift
-// not yet implemented
+let watcher = anchor.sep24.watcher()
+let result = watcher.watchAsset(authToken: token, 
+                                asset: asset)
+
+NotificationCenter.default.addObserver(self,
+                                       selector: #selector(handleEvent(_:)),
+                                       name: result.notificationName,
+                                       object: nil)
+                                       
+/// ...
+@objc public func handleEvent(_ notification: Notification) {
+    if let statusChange = notification.object as? StatusChange {
+        print("Status change to \(statusChange.status.rawValue). Transaction: \(statusChange.transaction.id)")
+    } else if let _ = notification.object as? ExceptionHandlerExit {
+        print("Exception handler exited the job")
+    } else if let _ = notification.object as? NotificationsClosed {
+        print("Notifications closed. Job is done")
+    }
+}
 ```
 
 Examples can be found in the [InteractiveFlowTest](https://github.com/Soneso/stellar-swift-wallet-sdk/blob/main/Tests/stellar-wallet-sdkTests/InteractiveFlowTest.swift).
