@@ -11,7 +11,7 @@ All features that have already been implemented are documented [here](https://gi
 
 **Brief description:** Implementation of the features and api needed for communication with the Stellar Network as documented [here](https://developers.stellar.org/docs/build/apps/wallet/stellar).
 
-**Status:** In progress
+**Status:** Done
 
 
 ### 2. Stellar Authentication (SEP-10)
@@ -19,14 +19,14 @@ All features that have already been implemented are documented [here](https://gi
 **Brief description:** Wallets connect to anchors using a standard way of authentication via the Stellar network defined by the [SEP-10](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md) standard. 
 This milestone will contain all the components required for SEP-10 Authentication with Anchors as documented [here](https://developers.stellar.org/docs/build/apps/wallet/sep10).
 
-**Status:** To do
+**Status:** Done
 
 
 ### 3. Hosted Deposit and Withdrawal (SEP-24)
 
 **Brief description:** The [SEP-24](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md) standard defines the standard way for anchors and wallets to interact on behalf of users. Wallets use this standard to facilitate exchanges between on-chain assets (such as stablecoins) and off-chain assets (such as fiat, or other network assets such as BTC). This milestone will cover the SEP-24 flow as documented [here](https://developers.stellar.org/docs/build/apps/wallet/sep24).
 
-**Status:** To do
+**Status:** Done
 
 
 ### 4. Quotes (SEP-38)
