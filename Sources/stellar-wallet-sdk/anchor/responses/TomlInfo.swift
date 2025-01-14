@@ -260,8 +260,7 @@ public class InfoCurrency {
         self.isAssetAnchored = currency.isAssetAnchored
         self.anchorAssetType = currency.anchorAssetType
         self.anchorAsset = currency.anchorAsset
-        self.attestationOfReserve = nil
-        //self.attestationOfReserve = currency.attestationOfReserve
+        self.attestationOfReserve = currency.attestationOfReserve
         self.redemptionInstructions = currency.redemptionInstructions
         self.collateralAddresses = currency.collateralAddresses
         self.collateralAddressSignatures = currency.collateralAddressSignatures
