@@ -21,7 +21,6 @@ final class InteractiveFlowTestUtils {
     static let serverSecretSeed = "SAWDHXQG6ROJSU4QGCW7NSTYFHPTPIVC2NC7QKVTO7PZCSO2WEBGM54W"
     static let userAccountId = "GB4L7JUU5DENUXYH3ANTLVYQL66KQLDDJTN5SF7MWEDGWSGUA375V44V"
     static let userSecretSeed = "SBAYNYLQFXVLVAHW4BXDQYNJLMDQMZ5NQDDOHVJD3PTBAUIJRNRK5LGX"
-    static let jwtSuccess = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJHQTZVSVhYUEVXWUZJTE5VSVdBQzM3WTRRUEVaTVFWREpIREtWV0ZaSjJLQ1dVQklVNUlYWk5EQSIsImp0aSI6IjE0NGQzNjdiY2IwZTcyY2FiZmRiZGU2MGVhZTBhZDczM2NjNjVkMmE2NTg3MDgzZGFiM2Q2MTZmODg1MTkwMjQiLCJpc3MiOiJodHRwczovL2ZsYXBweS1iaXJkLWRhcHAuZmlyZWJhc2VhcHAuY29tLyIsImlhdCI6MTUzNDI1Nzk5NCwiZXhwIjoxNTM0MzQ0Mzk0fQ.8nbB83Z6vGBgC1X9r3N6oQCFTBzDiITAfCJasRft0z0"
     
     static let serverKeypair = try! KeyPair(secretSeed: serverSecretSeed)
     static let userKeypair = try! KeyPair(secretSeed: userSecretSeed)
@@ -35,9 +34,9 @@ final class InteractiveFlowTestUtils {
 final class InteractiveFlowTest: XCTestCase {
 
     let wallet = Wallet.testNet
-    var anchorTomlServerMock: InteractiveTomlResponseMock!
-    var challengeServerMock: IfWebAuthChallengeResponseMock!
-    var sendChallengeServerMock: IfWebAuthSendChallengeResponseMock!
+    var anchorTomlServerMock: TomlResponseMock!
+    var challengeServerMock: WebAuthChallengeResponseMock!
+    var sendChallengeServerMock: WebAuthSendChallengeResponseMock!
     var infoServerMock: InteractiveInfoResponseMock!
     var depositServerMock: InteractiveDepositResponseMock!
     var withdrawServerMock: InteractiveWithdrawResponseMock!
@@ -47,14 +46,15 @@ final class InteractiveFlowTest: XCTestCase {
     override func setUp() {
         URLProtocol.registerClass(ServerMock.self)
         
-        anchorTomlServerMock = InteractiveTomlResponseMock(host: InteractiveFlowTestUtils.anchorHost,
+        anchorTomlServerMock = TomlResponseMock(host: InteractiveFlowTestUtils.anchorHost,
                                                        serverSigningKey: InteractiveFlowTestUtils.serverAccountId,
-                                                       authServer: InteractiveFlowTestUtils.webAuthEndpoint)
+                                                       authServer: InteractiveFlowTestUtils.webAuthEndpoint,
+                                                       sep24TransferServer: "https://\(InteractiveFlowTestUtils.anchorInteractiveHost)")
         
-        challengeServerMock = IfWebAuthChallengeResponseMock(host: InteractiveFlowTestUtils.anchorWebAuthHost,
+        challengeServerMock = WebAuthChallengeResponseMock(host: InteractiveFlowTestUtils.anchorWebAuthHost,
                                                            serverKeyPair: InteractiveFlowTestUtils.serverKeypair)
         
-        sendChallengeServerMock = IfWebAuthSendChallengeResponseMock(host: InteractiveFlowTestUtils.anchorWebAuthHost)
+        sendChallengeServerMock = WebAuthSendChallengeResponseMock(host: InteractiveFlowTestUtils.anchorWebAuthHost)
         infoServerMock = InteractiveInfoResponseMock(host: InteractiveFlowTestUtils.anchorInteractiveHost)
         depositServerMock = InteractiveDepositResponseMock(host: InteractiveFlowTestUtils.anchorInteractiveHost)
         withdrawServerMock = InteractiveWithdrawResponseMock(host: InteractiveFlowTestUtils.anchorInteractiveHost)
@@ -363,57 +363,6 @@ class TxObserver {
     }
 }
 
-class InteractiveTomlResponseMock: ResponsesMock {
-    var host: String
-    var serverSigningKey: String
-    var authServer: String?
-    
-    init(host:String, serverSigningKey: String, authServer: String? = nil) {
-        self.host = host
-        self.serverSigningKey = serverSigningKey
-        self.authServer = authServer
-        
-        super.init()
-    }
-    
-    override func requestMock() -> RequestMock {
-        
-        let handler: MockHandler = { [weak self] mock, request in
-            return self?.stellarToml
-        }
-        
-        return RequestMock(host: host,
-                           path: "/.well-known/stellar.toml",
-                           httpMethod: "GET",
-                           mockHandler: handler)
-    }
-    
-    var stellarToml:String {
-        get {
-            return """
-                # Sample stellar.toml
-                VERSION="2.0.0"
-                NETWORK_PASSPHRASE="\(Network.testnet.passphrase)"
-                TRANSFER_SERVER_SEP0024="https://\(InteractiveFlowTestUtils.anchorInteractiveHost)"
-                SIGNING_KEY="\(serverSigningKey)"
-            """ + (authServer == nil ? "" : """
-                WEB_AUTH_ENDPOINT="\(authServer!)"
-            """) +
-            """
-                [[CURRENCIES]]
-                code="USDC"
-                issuer="GCZJM35NKGVK47BB4SPBDV25477PZYIYPVVG453LPYFNXLS3FGHDXOCM"
-                display_decimals=2
-
-                [[CURRENCIES]]
-                code="ETH"
-                issuer="GAOO3LWBC4XF6VWRP5ESJ6IBHAISVJMSBTALHOQM2EZG7Q477UWA6L7U"
-                display_decimals=7
-            """
-        }
-    }
-}
-
 class InteractiveInfoResponseMock: ResponsesMock {
     var host: String
     
@@ -597,119 +546,5 @@ class InteractiveMultipleTxResponseMock: ResponsesMock {
     
     func requestPendingTransactionsCompleted() -> String {
         return "{  \"transactions\": [    {      \"id\": \"82fhs729f63dh0v4\",      \"kind\": \"deposit\",      \"status\": \"completed\",      \"status_eta\": 3600,      \"external_transaction_id\": \"2dd16cb409513026fbe7defc0c6f826c2d2c65c3da993f747d09bf7dafd31093\",      \"more_info_url\": \"https://youranchor.com/tx/242523523\",      \"amount_in\": \"18.34\",      \"amount_out\": \"18.24\",      \"amount_fee\": \"0.1\",      \"started_at\": \"2017-03-20T17:05:32Z\",      \"claimable_balance_id\": null    },    {      \"id\": \"52fhs729f63dh0v4\",      \"kind\": \"withdrawal\",      \"status\": \"completed\",      \"amount_in\": \"510\",      \"amount_out\": \"490\",      \"amount_fee\": \"5\",      \"started_at\": \"2017-03-20T17:00:02Z\",       \"updated_at\": \"2017-03-20T17:09:58Z\",      \"more_info_url\": \"https://youranchor.com/tx/242523523\",      \"stellar_transaction_id\": \"17a670bc424ff5ce3b386dbfaae9990b66a2a37b4fbe51547e8794962a3f9e6a\",      \"external_transaction_id\": \"1941491\",      \"withdraw_anchor_account\": \"GBANAGOAXH5ONSBI2I6I5LHP2TCRHWMZIAMGUQH2TNKQNCOGJ7GC3ZOL\",      \"withdraw_memo\": \"186384\",      \"withdraw_memo_type\": \"id\",      \"refunds\": {        \"amount_refunded\": \"10\",        \"amount_fee\": \"5\",        \"payments\": [          {            \"id\": \"b9d0b2292c4e09e8eb22d036171491e87b8d2086bf8b265874c8d182cb9c9020\",            \"id_type\": \"stellar\",            \"amount\": \"10\",            \"fee\": \"5\"          }        ]      }    },    {      \"id\": \"92fhs729f63dh0v3\",      \"kind\": \"deposit\",      \"status\": \"completed\",      \"amount_in\": \"510\",      \"amount_out\": \"490\",      \"amount_fee\": \"5\",      \"started_at\": \"2017-03-20T17:00:02Z\",       \"updated_at\": \"2017-03-20T17:09:58Z\",      \"more_info_url\": \"https://youranchor.com/tx/242523526\",      \"stellar_transaction_id\": \"17a670bc424ff5ce3b386dbfaae9990b66a2a37b4fbe51547e8794962a3f9e6a\",      \"external_transaction_id\": \"1947101\",      \"refunds\": {        \"amount_refunded\": \"10\",        \"amount_fee\": \"5\",        \"payments\": [          {            \"id\": \"1937103\",            \"id_type\": \"external\",            \"amount\": \"10\",            \"fee\": \"5\"          }        ]      }    },    {      \"id\": \"92fhs729f63dh0v3\",      \"kind\": \"deposit\",      \"status\": \"completed\",      \"amount_in\": \"510\",      \"amount_out\": \"490\",      \"amount_fee\": \"5\",      \"started_at\": \"2017-03-20T17:00:02Z\",      \"updated_at\": \"2017-03-20T17:05:58Z\",      \"more_info_url\": \"https://youranchor.com/tx/242523526\",      \"stellar_transaction_id\": \"17a670bc424ff5ce3b386dbfaae9990b66a2a37b4fbe51547e8794962a3f9e6a\",      \"external_transaction_id\": \"1947101\",      \"refunds\": {        \"amount_refunded\": \"10\",        \"amount_fee\": \"5\",        \"payments\": [          {            \"id\": \"1937103\",            \"id_type\": \"external\",            \"amount\": \"10\",            \"fee\": \"5\"          }        ]      }    }  ]}"
-    }
-}
-
-class IfWebAuthChallengeResponseMock: ResponsesMock {
-    var host: String
-    var serverKeyPair: KeyPair
-    
-    init(host:String, serverKeyPair:KeyPair) {
-        self.host = host
-        self.serverKeyPair = serverKeyPair
-        
-        super.init()
-    }
-    
-    override func requestMock() -> RequestMock {
-        let handler: MockHandler = { [weak self] mock, request in
-            if let account = mock.variables["account"] {
-                mock.statusCode = 200
-                return self?.requestSuccess(account: account)
-            }
-            mock.statusCode = 400
-            return """
-                {"error": "Bad request"}
-            """
-        }
-        
-        return RequestMock(host: host,
-                           path: "/auth",
-                           httpMethod: "GET",
-                           mockHandler: handler)
-    }
-    
-    func generateNonce(length: Int) -> String? {
-        let nonce = NSMutableData(length: length)
-        let result = SecRandomCopyBytes(kSecRandomDefault, nonce!.length, nonce!.mutableBytes)
-        if result == errSecSuccess {
-            return (nonce! as Data).base64EncodedString()
-        } else {
-            return nil
-        }
-    }
-    
-    func getValidTimeBounds() -> TransactionPreconditions {
-        return TransactionPreconditions(timeBounds: TimeBounds(minTime: UInt64(Date().timeIntervalSince1970),
-                                                               maxTime: UInt64(Date().timeIntervalSince1970 + 300)))
-    }
-    
-    func getValidFirstManageDataOp (accountId: String) -> ManageDataOperation {
-        return ManageDataOperation(sourceAccountId: accountId, name: "\(AuthTestUtils.anchorDomain) auth", data: generateNonce(length: 64)?.data(using: .utf8))
-    }
-    
-    func getValidSecondManageDataOp () -> ManageDataOperation {
-        return ManageDataOperation(sourceAccountId: serverKeyPair.accountId, name: "web_auth_domain", data: host.data(using: .utf8))
-    }
-    
-    func getResponseJson(_ transaction:Transaction) -> String {
-        return """
-                {
-                "transaction": "\(try! transaction.encodedEnvelope())"
-                }
-                """
-    }
-    
-    func getValidTxAccount() -> Account {
-        return Account(keyPair: serverKeyPair, sequenceNumber: -1)
-    }
-    
-    func requestSuccess(account: String) -> String {
- 
-        let transaction = try! Transaction(sourceAccount: getValidTxAccount(),
-                                           operations: [getValidFirstManageDataOp(accountId: account), getValidSecondManageDataOp()],
-                                           memo: nil,
-                                           preconditions: getValidTimeBounds())
-        try! transaction.sign(keyPair: serverKeyPair, network: .testnet)
-        
-        return getResponseJson(transaction)
-    }
-}
-
-class IfWebAuthSendChallengeResponseMock: ResponsesMock {
-    var host: String
-    
-    init(host:String) {
-        self.host = host
-        
-        super.init()
-    }
-    
-    override func requestMock() -> RequestMock {
-        let handler: MockHandler = { [weak self] mock, request in
-            if let data = request.httpBodyStream?.readfully(), let json = try! JSONSerialization.jsonObject(with: data, options : .allowFragments) as? [String:Any] {
-                if let _ = json["transaction"] as? String {
-                    mock.statusCode = 200
-                    return self?.requestSuccess()
-                }
-            }
-            mock.statusCode = 400
-            return """
-                {"error": "Bad request"}
-            """
-        }
-        
-        return RequestMock(host: host,
-                           path: "/auth",
-                           httpMethod: "POST",
-                           mockHandler: handler)
-    }
-    
-    func requestSuccess() -> String {
-        return """
-        {
-        "token": "\(InteractiveFlowTestUtils.jwtSuccess)"
-        }
-        """
     }
 }

@@ -55,7 +55,15 @@ public class Anchor {
         self.infoHolder = InfoHolder(network: config.stellar.network, 
                                      homeDomain: homeDomain,
                                      lang: lang)
-    }    
+    }
+    
+    public func sep38(authToken:AuthToken?) async throws -> Sep38 {
+        let toml = try await infoHolder.info
+        guard let serviceAddress = toml.anchorQuoteServer else {
+            throw AnchorError.quoteServerNotFound
+        }
+        return Sep38(serviceAddress: serviceAddress, authToken: authToken)
+    }
 }
 
 public class InfoHolder {

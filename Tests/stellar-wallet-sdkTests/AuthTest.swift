@@ -48,8 +48,8 @@ final class AuthTest: XCTestCase {
     let wallet = Wallet.testNet
     var anchorTomlServerMock: WebAuthTomlResponseMock!
     var clientTomlServerMock: WebAuthTomlResponseMock!
-    var challengeServerMock: WebAuthChallengeResponseMock!
-    var sendChallengeServerMock: WebAuthSendChallengeResponseMock!
+    var challengeServerMock: AuthTestWebAuthChallengeResponseMock!
+    var sendChallengeServerMock: AuthTestWebAuthSendChallengeResponseMock!
     var clientSignerServerMock: ClientSignerResponseMock!
     
     override func setUp() {
@@ -62,10 +62,10 @@ final class AuthTest: XCTestCase {
         clientTomlServerMock = WebAuthTomlResponseMock(address: AuthTestUtils.clientDomain,
                                                        serverSigningKey: AuthTestUtils.clientAccountId)
         
-        challengeServerMock = WebAuthChallengeResponseMock(address: AuthTestUtils.anchorWebAuthDomain,
+        challengeServerMock = AuthTestWebAuthChallengeResponseMock(address: AuthTestUtils.anchorWebAuthDomain,
                                                            serverKeyPair: AuthTestUtils.serverKeypair)
         
-        sendChallengeServerMock = WebAuthSendChallengeResponseMock(address: AuthTestUtils.anchorWebAuthDomain)
+        sendChallengeServerMock = AuthTestWebAuthSendChallengeResponseMock(address: AuthTestUtils.anchorWebAuthDomain)
         
         clientSignerServerMock = ClientSignerResponseMock(address: AuthTestUtils.clientDomain)
     }
@@ -388,7 +388,7 @@ class WebAuthTomlResponseMock: ResponsesMock {
     }
 }
 
-class WebAuthChallengeResponseMock: ResponsesMock {
+class AuthTestWebAuthChallengeResponseMock: ResponsesMock {
     var address: String
     var serverKeyPair: KeyPair
     
@@ -645,7 +645,7 @@ class WebAuthChallengeResponseMock: ResponsesMock {
     }
 }
 
-class WebAuthSendChallengeResponseMock: ResponsesMock {
+class AuthTestWebAuthSendChallengeResponseMock: ResponsesMock {
     var address: String
     
     init(address:String) {

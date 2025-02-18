@@ -33,7 +33,7 @@ This milestone will contain all the components required for SEP-10 Authenticatio
 
 **Brief description:** The [SEP-38](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0038.md) standard defines a way for anchors to provide quotes for the exchange of an off-chain asset and a different on-chain asset, and vice versa. This milestone will cover the SEP-38 flow as documented [here](https://developers.stellar.org/docs/build/apps/wallet/sep38).
 
-**Status:** To do
+**Status:** Done
 
 
 ### 5. KYC API (SEP-12)
@@ -116,7 +116,7 @@ Primary use of the SDK is to provide an easy way to connect to anchors via sets 
 - SEP-12: [Providing KYC info](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0012.md)
 - SEP-38: [Quotes](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0038.md)
 
-This functionality is not yet implemented. We will provide all details as soon as it is ready. Stay tuned!
+This functionality is not yet completely implemented. We will provide all details as soon as it is ready. Stay tuned!
 
 
 #### Documentation and Test Cases

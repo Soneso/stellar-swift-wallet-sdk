@@ -232,5 +232,7 @@ An example client implementation can be found in the [AuthTest](https://github.c
 The test uses an example server implementation that can be found [here](https://replit.com/@crogobete/ClientDomainSigner#main.py).
 
 
+## Next
 
+Continue with [Quotes](https://github.com/Soneso/stellar-swift-wallet-sdk/blob/main/docs/quotes.md).
 

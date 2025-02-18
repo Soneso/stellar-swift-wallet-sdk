@@ -66,6 +66,7 @@ This functionality is not yet implemented. We will provide all details as soon a
 - [Wallet](wallet.md)
 - [Interaction with the Stellar Network](stellar.md)
 - [Interaction with Anchors](anchors.md)
+- [Quotes](quotes.md)
 
 ## Next
 

@@ -10,4 +10,5 @@ import Foundation
 public enum AnchorError: Error {
     case interactiveFlowNotSupported
     case invalidAnchorResponse(message:String)
+    case quoteServerNotFound
 }
