@@ -64,6 +64,15 @@ public class Anchor {
         }
         return Sep38(serviceAddress: serviceAddress, authToken: authToken)
     }
+    
+    public func sep12(authToken:AuthToken) async throws -> Sep12 {
+        let toml = try await infoHolder.info
+        let serviceAddress = toml.kycServer ?? toml.transferServer
+        guard let serviceAddress = serviceAddress else {
+            throw AnchorError.kycServerNotFound
+        }
+        return Sep12(serviceAddress: serviceAddress, authToken: authToken)
+    }
 }
 
 public class InfoHolder {

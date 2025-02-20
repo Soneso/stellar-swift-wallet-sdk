@@ -17,6 +17,7 @@ public class Sep9PersonKeys {
     static let postalCode = "postal_code"
     static let address = "address"
     static let mobileNumber = "mobile_number"
+    static let mobileNumberFormat = "mobile_number_format"
     static let emailAddress = "email_address"
     static let birthDate = "birth_date"
     static let birthPlace = "birth_place"
@@ -44,14 +45,18 @@ public class Sep9PersonKeys {
 }
 
 public class Sep9FinancialKeys {
+    static let bankName = "bank_name"
     static let bankAccountType = "bank_account_type"
     static let bankAccountNumber = "bank_account_number"
     static let bankNumber = "bank_number"
     static let bankPhoneNumber = "bank_phone_number"
     static let bankBranchNumber = "bank_branch_number"
+    static let externalTransferMemo = "external_transfer_memo"
     static let clabeNumber = "clabe_number"
     static let cbuNumber = "cbu_number"
     static let cbuAlias = "cbu_alias"
+    static let mobileMoneyNumber = "mobile_money_number"
+    static let mobileMoneyProvider = "mobile_money_provider"
     static let cryptoAddress = "crypto_address"
     static let cryptoMemo = "crypto_memo"
 
@@ -75,4 +80,18 @@ public class Sep9OrganizationKeys {
     static let website = "organization.website"
     static let email = "organization.email"
     static let phone = "organization.phone"
+}
+
+public class Sep9CardKeys {
+    static let number = "card.number"
+    static let expirationDate = "card.expiration_date"
+    static let cvc = "card.cvc"
+    static let holderName = "card.holder_name"
+    static let network = "card.network"
+    static let postalCode = "card.postal_code"
+    static let countryCode = "card.country_code"
+    static let stateOrProvince = "card.state_or_province"
+    static let city = "card.city"
+    static let address = "card.address"
+    static let token = "card.token"
 }
