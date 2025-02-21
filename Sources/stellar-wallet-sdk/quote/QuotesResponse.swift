@@ -9,7 +9,7 @@ import Foundation
 import stellarsdk
 
 public class QuotesInfoResponse {
-    var assets: [QuoteInfoAsset]
+    public var assets: [QuoteInfoAsset]
     
     init(info:Sep38InfoResponse) {
         self.assets = []
@@ -20,10 +20,10 @@ public class QuotesInfoResponse {
 }
 
 public class QuoteInfoAsset {
-    var asset:String
-    var sellDeliveryMethods:[QuoteSellDeliveryMethod]?
-    var buyDeliveryMethods:[QuoteBuyDeliveryMethod]?
-    var countryCodes:[String]?
+    public var asset:String
+    public var sellDeliveryMethods:[QuoteSellDeliveryMethod]?
+    public var buyDeliveryMethods:[QuoteBuyDeliveryMethod]?
+    public var countryCodes:[String]?
  
     init(asset:Sep38Asset) {
         self.asset = asset.asset
@@ -50,8 +50,8 @@ public class QuoteInfoAsset {
 }
 
 public class QuoteSellDeliveryMethod {
-    var name:String
-    var description:String
+    public var name:String
+    public var description:String
     
     init(method:Sep38SellDeliveryMethod) {
         self.name = method.name
@@ -61,8 +61,8 @@ public class QuoteSellDeliveryMethod {
 
 
 public class QuoteBuyDeliveryMethod {
-    var name:String
-    var description:String
+    public var name:String
+    public var description:String
     
     init(method:Sep38BuyDeliveryMethod) {
         self.name = method.name
@@ -71,7 +71,7 @@ public class QuoteBuyDeliveryMethod {
 }
 
 public class QuoteAssetIndicativePrices {
-    var buyAssets:[QuoteBuyAsset]
+    public var buyAssets:[QuoteBuyAsset]
     
     init(prices:Sep38PricesResponse) {
         self.buyAssets = []
@@ -82,9 +82,9 @@ public class QuoteAssetIndicativePrices {
 }
 
 public class QuoteBuyAsset {
-    var asset:String
-    var price:String
-    var decimals:Int
+    public var asset:String
+    public var price:String
+    public var decimals:Int
     
     init(buyAsset:Sep38BuyAsset) {
         self.asset = buyAsset.asset
@@ -94,11 +94,11 @@ public class QuoteBuyAsset {
 }
 
 public class QuoteAssetPairIndicativePrice {
-    var totalPrice:String
-    var price:String
-    var sellAmount:String
-    var buyAmount:String
-    var fee:ConversionFee
+    public var totalPrice:String
+    public var price:String
+    public var sellAmount:String
+    public var buyAmount:String
+    public var fee:ConversionFee
     
     init(sep38Price:Sep38PriceResponse) {
         self.totalPrice = sep38Price.totalPrice
@@ -110,9 +110,9 @@ public class QuoteAssetPairIndicativePrice {
 }
 
 public class ConversionFee {
-    var total:String
-    var asset:String
-    var details: [ConversionFeeDetails]?
+    public var total:String
+    public var asset:String
+    public var details: [ConversionFeeDetails]?
     
     init(fee:Sep38Fee) {
         self.total = fee.total
@@ -127,9 +127,9 @@ public class ConversionFee {
 }
 
 public class ConversionFeeDetails {
-    var name:String
-    var amount:String
-    var description:String?
+    public var name:String
+    public var amount:String
+    public var description:String?
     
     init(details:Sep38FeeDetails) {
         self.name = details.name

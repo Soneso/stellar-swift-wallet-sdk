@@ -9,11 +9,11 @@ import Foundation
 import stellarsdk
 
 public class CommonTxBuilder {
-    var sourceAccount:TransactionAccount
-    var operations:[stellarsdk.Operation]
-    var memo:stellarsdk.Memo?
-    var timebounds:stellarsdk.TimeBounds?
-    var baseFee:UInt32?
+    public var sourceAccount:TransactionAccount
+    public var operations:[stellarsdk.Operation]
+    public var memo:stellarsdk.Memo?
+    public var timebounds:stellarsdk.TimeBounds?
+    public var baseFee:UInt32?
     
     fileprivate init(sourceAccount:TransactionAccount, operations:[stellarsdk.Operation]) {
         self.sourceAccount = sourceAccount

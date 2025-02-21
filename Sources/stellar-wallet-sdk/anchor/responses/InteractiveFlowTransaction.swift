@@ -209,9 +209,9 @@ public class ErrorTransaction:InteractiveFlowTransaction {
 
 public class Refunds {
     
-    let amountFee:String
-    let amountRefunded:String
-    let payments:[Payment]
+    public let amountFee:String
+    public let amountRefunded:String
+    public let payments:[Payment]
     
     internal init(amountFee: String, amountRefunded: String, payments: [Payment]) {
         self.amountFee = amountFee
@@ -243,10 +243,10 @@ public class Refunds {
 
 public class Payment{
     
-    let id:String
-    let idType:String
-    let amount:String
-    let fee:String
+    public let id:String
+    public let idType:String
+    public let amount:String
+    public let fee:String
     
     internal init(id: String, idType: String, amount: String, fee: String) {
         self.id = id

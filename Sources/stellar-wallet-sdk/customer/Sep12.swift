@@ -11,8 +11,8 @@ import stellarsdk
 /// Implements SEP-0012 - KYCAPI.
 /// See <https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0012.md" target="_blank">KYC API.</a>
 public class Sep12 {
-    var authToken:AuthToken
-    var kycService: KycService
+    public var authToken:AuthToken
+    private var kycService: KycService
     
     /// Constructor
     ///

@@ -9,11 +9,11 @@ import Foundation
 import stellarsdk
 
 public class GetCustomerResponse {
-    var id:String?
-    var sep12Status:Sep12Status
-    var fields:[String:Field]?
-    var providedFields:[String:ProvidedField]?
-    var message:String?
+    public var id:String?
+    public var sep12Status:Sep12Status
+    public var fields:[String:Field]?
+    public var providedFields:[String:ProvidedField]?
+    public var message:String?
     init(info:GetCustomerInfoResponse) {
         self.id = info.id
         self.sep12Status = Sep12Status(rawValue: info.status) ?? Sep12Status.neesdInfo
@@ -41,10 +41,10 @@ public class AddCustomerResponse {
 }
 
 public class Field {
-    var type:FieldType
-    var description:String?
-    var choices:[String]?
-    var optional:Bool?
+    public var type:FieldType
+    public var description:String?
+    public var choices:[String]?
+    public var optional:Bool?
     
     init(field:GetCustomerInfoField) {
         self.type = FieldType(rawValue: field.type) ?? FieldType.string
@@ -62,12 +62,12 @@ public class Field {
 }
 
 public class ProvidedField {
-    var type:FieldType
-    var description:String?
-    var choices:[String]?
-    var optional:Bool?
-    var sep12Status:Sep12Status?
-    var error:String?
+    public var type:FieldType
+    public var description:String?
+    public var choices:[String]?
+    public var optional:Bool?
+    public var sep12Status:Sep12Status?
+    public var error:String?
     
     init(field:GetCustomerInfoProvidedField) {
         self.type = FieldType(rawValue: field.type) ?? FieldType.string
@@ -82,7 +82,7 @@ public class ProvidedField {
         }
         self.optional = field.optional
         if let status = field.status {
-            self.sep12Status = Sep12Status(rawValue: field.status!)
+            self.sep12Status = Sep12Status(rawValue: status)
         }
         self.error = field.error
     }

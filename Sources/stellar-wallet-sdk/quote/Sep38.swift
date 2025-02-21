@@ -11,8 +11,8 @@ import stellarsdk
 /// Implements SEP-0038 - Anchor RFQ API.
 /// See <https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0038.md" target="_blank">Anchor RFQ API.</a>
 public class Sep38 {
-    var authToken:AuthToken?
-    var quoteService: QuoteService
+    public var authToken:AuthToken?
+    private let quoteService: QuoteService
     
     /// Constructor
     ///
