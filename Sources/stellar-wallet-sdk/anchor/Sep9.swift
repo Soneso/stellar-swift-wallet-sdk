@@ -63,6 +63,7 @@ public class Sep9FinancialKeys {
 }
 
 public class Sep9OrganizationKeys {
+    static let prefix = "organization"
     static let name = "organization.name"
     static let VATNumber = "organization.VAT_number"
     static let registrationNumber = "organization.registration_number"

@@ -94,7 +94,13 @@ public class AuthToken {
     public var expiresAt:Date
     public var clientDomain:String?
     public var signature:String
-        
+    
+    public var account:String {
+        get {
+            return principalAccount.components(separatedBy: ":").first!
+        }
+    }
+    
     public init(jwt:String) throws {
         self.jwt = jwt
         self.decodedToken = try AuthToken.decode(jwtToken: jwt)

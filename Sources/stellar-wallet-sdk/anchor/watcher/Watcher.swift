@@ -7,7 +7,12 @@
 
 import Foundation
 
-/// Used for watching transaction from an Anchor as part of sep-24.
+public enum WatcherKind {
+    case sep24
+    case sep6
+}
+
+/// Used for watching transaction from an Anchor as part of sep-24 or sep-6.
 public class Watcher {
 
     public let anchor:Anchor
@@ -15,11 +20,13 @@ public class Watcher {
     public let exceptionHandler:WalletExceptionHandler
     private var oneTxProps:[String:OneTxWatchProps] = [:]
     private var multiTxProps:[String:MultipleTxWatchProps] = [:]
+    private let watcherKind:WatcherKind
     
-    internal init(anchor: Anchor, pollDelay: Double, exceptionHandler: any WalletExceptionHandler) {
+    internal init(anchor: Anchor, pollDelay: Double, exceptionHandler: any WalletExceptionHandler, watcherKind:WatcherKind) {
         self.anchor = anchor
         self.pollDelay = pollDelay
         self.exceptionHandler = exceptionHandler
+        self.watcherKind = watcherKind
     }
     
     /// Watch a transaction until it stops pending.
@@ -42,7 +49,10 @@ public class Watcher {
                 var shouldExit = false
                 
                 do {
-                    let transaction = try await self.anchor.sep24.getTransactionBy(authToken: authToken, transactionId: id)
+                    let transaction:AnchorTransaction = self.watcherKind == WatcherKind.sep24 ?
+                    try await self.anchor.sep24.getTransactionBy(authToken: authToken, transactionId: id) :
+                    try await self.anchor.sep6.getTransactionBy(authToken: authToken, transactionId: id)
+                    
                     let statusChange = StatusChange(transaction: transaction, status: transaction.transactionStatus, oldStatus: txProps.oldStatus)
                     if (statusChange.status != statusChange.oldStatus) {
                         NotificationCenter.default.post(name: notificationName, object: statusChange)
@@ -97,10 +107,10 @@ public class Watcher {
             Task {
                 var shouldExit = false
                 do {
-                    let txList = try await self.anchor.sep24.getTransactionsForAsset(authToken: authToken,
-                                                                                     asset: asset,
-                                                                                     noOlderThen: since,
-                                                                                     kind: kind)
+                    let txList:[AnchorTransaction] = self.watcherKind == WatcherKind.sep24 ?
+                    try await self.anchor.sep24.getTransactionsForAsset(authToken: authToken, asset: asset, noOlderThen: since, kind: kind):
+                    try await self.anchor.sep6.getTransactionsForAsset(authToken: authToken,assetCode: ((asset is IssuedAssetId) ? (asset as! IssuedAssetId).code : asset.id),noOlderThan: since,kind: kind)
+                    
                     var hasUnfinishedTransactions = false
                     for transaction in txList {
                         let statusChange = StatusChange(transaction: transaction, status: transaction.transactionStatus, oldStatus: txProps.oldStatus[transaction.id])

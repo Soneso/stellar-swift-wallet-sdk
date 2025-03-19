@@ -13,6 +13,7 @@ class TomlResponseMock: ResponsesMock {
     var serverSigningKey: String
     var authServer: String?
     var sep24TransferServer: String?
+    var sep6TransferServer: String?
     var anchorQuoteServer:String?
     var kycServer:String?
     
@@ -20,12 +21,14 @@ class TomlResponseMock: ResponsesMock {
          serverSigningKey: String,
          authServer: String? = nil,
          sep24TransferServer:String? = nil,
+         sep6TransferServer:String? = nil,
          anchorQuoteServer:String? = nil,
          kycServer:String? = nil) {
         self.host = host
         self.serverSigningKey = serverSigningKey
         self.authServer = authServer
         self.sep24TransferServer = sep24TransferServer
+        self.sep6TransferServer = sep6TransferServer
         self.anchorQuoteServer = anchorQuoteServer
         self.kycServer = kycServer
         
@@ -52,6 +55,8 @@ class TomlResponseMock: ResponsesMock {
                 NETWORK_PASSPHRASE="\(Network.testnet.passphrase)"
                 """ + (sep24TransferServer == nil ? "" : """
                 TRANSFER_SERVER_SEP0024="\(sep24TransferServer!)"
+                """) +  (sep6TransferServer == nil ? "" : """
+                TRANSFER_SERVER="\(sep6TransferServer!)"
                 """) + (anchorQuoteServer == nil ? "" : """
                 ANCHOR_QUOTE_SERVER="\(anchorQuoteServer!)"
                 """ )

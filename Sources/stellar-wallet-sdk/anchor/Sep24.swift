@@ -258,6 +258,6 @@ public class Sep24 {
     public func watcher(pollDelay:Double = 5.0,
                         exceptionHandler:WalletExceptionHandler = RetryExceptionHandler()) -> Watcher {
         
-        return Watcher(anchor: anchor, pollDelay: pollDelay, exceptionHandler: exceptionHandler)
+        return Watcher(anchor: anchor, pollDelay: pollDelay, exceptionHandler: exceptionHandler, watcherKind: WatcherKind.sep24)
     }
 }

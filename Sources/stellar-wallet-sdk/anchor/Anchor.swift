@@ -45,6 +45,12 @@ public class Anchor {
         }
     }
     
+    public var sep6:Sep6 {
+        get {
+            return Sep6(anchor:self)
+        }
+    }
+    
     internal init(config:Config,
                 homeDomain:String,
                 lang:String? = nil) {

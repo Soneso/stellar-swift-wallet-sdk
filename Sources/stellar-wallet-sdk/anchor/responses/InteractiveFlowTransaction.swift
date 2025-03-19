@@ -47,6 +47,8 @@ public class InteractiveFlowTransaction: AnchorTransaction {
             } else {
                 return WithdrawalTransaction(tx: tx, status: txStatus)
             }
+        default:
+            throw AnchorError.invalidAnchorResponse(message: "Invalid tx kind: \(tx.kind) received from anchor.")
         }
     }
 }

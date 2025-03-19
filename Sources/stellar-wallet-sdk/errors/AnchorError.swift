@@ -12,4 +12,5 @@ public enum AnchorError: Error {
     case invalidAnchorResponse(message:String)
     case quoteServerNotFound
     case kycServerNotFound
+    case depositAndWithdrawalAPINotSupported
 }
