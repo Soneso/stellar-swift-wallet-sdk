@@ -154,3 +154,7 @@ let getResp = try await sep38.getQuote(quoteId: quoteId)
 The response should match the one given from `.requestQuote()` we made earlier.
 
 Hint: This endpoint requires SEP-10 Auth. If not given in the sep38 constructor, you can pass it as a parameter in the method call.
+
+## Next
+
+Continue with [SEP-6](https://github.com/Soneso/stellar-swift-wallet-sdk/blob/main/docs/transfer.md).

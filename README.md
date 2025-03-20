@@ -41,7 +41,7 @@ This milestone will contain all the components required for SEP-10 Authenticatio
 **Brief description:** [SEP-12](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0012.md) defines a standard way for stellar clients to upload KYC (or other) information to anchors and other services. 
 Our SEP-6 implementation will use this protocol, but it can serve as a stand-alone service as well. This milestone will cover the SEP-12 flow as documented [here](https://developers.stellar.org/docs/build/apps/wallet/sep6#providing-kyc-info).
 
-**Status:** To do
+**Status:** Done
 
 
 ### 6. Programmatic Deposit and Withdrawal (SEP-06)
@@ -50,7 +50,7 @@ Our SEP-6 implementation will use this protocol, but it can serve as a stand-alo
 Wallets use this standard to facilitate exchanges between on-chain assets (such as stablecoins) and off-chain assets 
 (such as fiat, or other network assets such as BTC). See Wallet SDK docs [here](https://developers.stellar.org/docs/build/apps/wallet/sep6).
 
-**Status:** To do
+**Status:** Done
 
 
 ### 7. Recovery (SEP-30)
