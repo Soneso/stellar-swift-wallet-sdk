@@ -11,11 +11,12 @@ import stellarsdk
 class WebAuthChallengeResponseMock: ResponsesMock {
     var host: String
     var serverKeyPair: KeyPair
+    var homeDomain: String?
     
-    init(host:String, serverKeyPair:KeyPair) {
+    init(host:String, serverKeyPair:KeyPair, homeDomain:String? = nil) {
         self.host = host
         self.serverKeyPair = serverKeyPair
-        
+        self.homeDomain = homeDomain
         super.init()
     }
     
@@ -53,7 +54,7 @@ class WebAuthChallengeResponseMock: ResponsesMock {
     }
     
     func getValidFirstManageDataOp (accountId: String) -> ManageDataOperation {
-        return ManageDataOperation(sourceAccountId: accountId, name: "\(AuthTestUtils.anchorDomain) auth", data: generateNonce(length: 64)?.data(using: .utf8))
+        return ManageDataOperation(sourceAccountId: accountId, name: "\(homeDomain ?? AuthTestUtils.anchorDomain) auth", data: generateNonce(length: 64)?.data(using: .utf8))
     }
     
     func getValidSecondManageDataOp () -> ManageDataOperation {

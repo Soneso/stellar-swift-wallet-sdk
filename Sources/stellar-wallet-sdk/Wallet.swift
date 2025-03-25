@@ -67,4 +67,10 @@ public class Wallet {
         return Wallet(stellarConfig:StellarConfig.futureNet)
     }
     
+    /// Creates a new instance of Recovery for the given servers.
+    public func recovery(servers:[RecoveryServerKey:RecoveryServer]) -> Recovery {
+        let cfg = Config(stellar: stellarConfig, app: appConfig)
+        return Recovery(cfg: cfg, servers: servers)
+    }
+    
 }
