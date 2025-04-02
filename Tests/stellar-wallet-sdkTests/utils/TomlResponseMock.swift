@@ -16,6 +16,7 @@ class TomlResponseMock: ResponsesMock {
     var sep6TransferServer: String?
     var anchorQuoteServer:String?
     var kycServer:String?
+    var uriRequestSigningKey:String?
     
     init(host:String, 
          serverSigningKey: String,
@@ -23,7 +24,8 @@ class TomlResponseMock: ResponsesMock {
          sep24TransferServer:String? = nil,
          sep6TransferServer:String? = nil,
          anchorQuoteServer:String? = nil,
-         kycServer:String? = nil) {
+         kycServer:String? = nil,
+         uriRequestSigningKey:String? = nil) {
         self.host = host
         self.serverSigningKey = serverSigningKey
         self.authServer = authServer
@@ -31,6 +33,7 @@ class TomlResponseMock: ResponsesMock {
         self.sep6TransferServer = sep6TransferServer
         self.anchorQuoteServer = anchorQuoteServer
         self.kycServer = kycServer
+        self.uriRequestSigningKey = uriRequestSigningKey
         
         super.init()
     }
@@ -67,6 +70,8 @@ class TomlResponseMock: ResponsesMock {
                 WEB_AUTH_ENDPOINT="\(authServer!)"
                 """) + (kycServer == nil ? "" : """
                 KYC_SERVER="\(kycServer!)"
+                """) + (uriRequestSigningKey == nil ? "" : """
+                URI_REQUEST_SIGNING_KEY="\(uriRequestSigningKey!)"
                 """) +
                 """
                 [[CURRENCIES]]
