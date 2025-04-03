@@ -293,3 +293,7 @@ let transactions = try await anchor.sep6.getTransactionsForAsset(authToken: auth
 ## Further readings
 
 Multiple examples can be found in the [SEP-06 test cases](https://github.com/Soneso/stellar-swift-wallet-sdk/blob/main/Tests/stellar-wallet-sdkTests/TransferTest.swift)
+
+## Next
+
+Continue with [SEP-30 Recovery](https://github.com/Soneso/stellar-swift-wallet-sdk/blob/main/docs/recovery.md

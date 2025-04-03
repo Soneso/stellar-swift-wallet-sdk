@@ -20,6 +20,7 @@ The Wallet SDK provides an easy way to communicate with Anchors. It supports:
 
 - [SEP-001](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0001.md)
 - [SEP-006](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md)
+- [SEP-007](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0007.md)
 - [SEP-009](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0009.md)
 - [SEP-010](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md)
 - [SEP-012](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0012.md)
@@ -120,6 +121,13 @@ The [SEP-06](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/s
 Wallets use this standard to facilitate exchanges between on-chain assets (such as stablecoins) and off-chain assets (such as fiat, or other network assets such as BTC).
 
 You can read more about programmatic deposit and withdrawal in the [respective doc section](https://github.com/Soneso/stellar-swift-wallet-sdk/blob/main/docs/transfer.md).
+
+## URI Scheme to facilitate delegated signing
+
+The [SEP-07](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0007.md) standard defines a way for a non-wallet application to construct a URI scheme that represents a specific transaction for an account to sign. 
+The scheme used is `web+stellar`, followed by a colon. Example: `web+stellar:<operation>?<param1>=<value1>&<param2>=<value2>`
+
+You can read more about the SDK's SEP-7 support in the [respective doc section](https://github.com/Soneso/stellar-swift-wallet-sdk/blob/main/docs/uri.md).
 
 ## Documentation and Test Cases
 

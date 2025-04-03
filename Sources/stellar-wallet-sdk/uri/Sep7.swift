@@ -209,52 +209,51 @@ public class Sep7 {
                 }
             }
             if let memo = queryItems.filter({$0.name == Sep7ParameterName.memo.rawValue}).first?.value {
-                guard let memoTypeVal = queryItems.filter({$0.name == Sep7ParameterName.memoType.rawValue}).first?.value, let memoType = Sep7MemoType(rawValue: memoTypeVal) else {
-                    return IsValidSep7UriResult(result: false, reason: "Parameter '\(Sep7ParameterName.memo.rawValue)' provided but parameter '\(Sep7ParameterName.memoType.rawValue)' is missing.",
-                                                operationType: resultOpType,
-                                                queryItems: queryItems)
-                }
                 
-                switch memoType {
-                case .text:
-                    do {
-                        let _ = try Memo(text: memo)
-                    } catch {
-                        return IsValidSep7UriResult(result: false, reason: "Invalid '\(Sep7ParameterName.memo.rawValue)' for '\(Sep7ParameterName.memoType.rawValue)'",
-                                                    operationType: resultOpType,
-                                                    queryItems: queryItems)
-                    }
-                case .id:
-                    guard let _ = UInt64(memo) else {
-                        return IsValidSep7UriResult(result: false, reason: "Invalid '\(Sep7ParameterName.memo.rawValue)' for '\(Sep7ParameterName.memoType.rawValue)'",
-                                                    operationType: resultOpType,
-                                                    queryItems: queryItems)
-                    }
-                case .hash:
-                    guard let decodedMemo = Data(base64Encoded: memo) else {
-                        return IsValidSep7UriResult(result: false, reason: "Parameter '\(Sep7ParameterName.memo.rawValue)' of memo type '\(Sep7ParameterName.memoType.rawValue)' must be base64 encoded",
-                                                    operationType: resultOpType,
-                                                    queryItems: queryItems)
-                    }
-                    do {
-                        let _ = try Memo(hash: decodedMemo)
-                    } catch {
-                        return IsValidSep7UriResult(result: false, reason: "Invalid '\(Sep7ParameterName.memo.rawValue)' for '\(Sep7ParameterName.memoType.rawValue)'",
-                                                    operationType: resultOpType,
-                                                    queryItems: queryItems)
-                    }
-                case .returnMemo:
-                    guard let decodedMemo = Data(base64Encoded: memo) else {
-                        return IsValidSep7UriResult(result: false, reason: "Parameter '\(Sep7ParameterName.memo.rawValue)' of memo type '\(Sep7ParameterName.memoType.rawValue)' must be base64 encoded",
-                                                    operationType: resultOpType,
-                                                    queryItems: queryItems)
-                    }
-                    do {
-                        let _ = try Memo(returnHash: decodedMemo)
-                    } catch {
-                        return IsValidSep7UriResult(result: false, reason: "Invalid '\(Sep7ParameterName.memo.rawValue)' for '\(Sep7ParameterName.memoType.rawValue)'",
-                                                    operationType: resultOpType,
-                                                    queryItems: queryItems)
+                if let memoTypeVal = queryItems.filter({$0.name == Sep7ParameterName.memoType.rawValue}).first?.value,
+                    let memoType = Sep7MemoType(rawValue: memoTypeVal) {
+                    
+                    switch memoType {
+                    case .text:
+                        do {
+                            let _ = try Memo(text: memo)
+                        } catch {
+                            return IsValidSep7UriResult(result: false, reason: "Invalid '\(Sep7ParameterName.memo.rawValue)' for '\(Sep7ParameterName.memoType.rawValue)'",
+                                                        operationType: resultOpType,
+                                                        queryItems: queryItems)
+                        }
+                    case .id:
+                        guard let _ = UInt64(memo) else {
+                            return IsValidSep7UriResult(result: false, reason: "Invalid '\(Sep7ParameterName.memo.rawValue)' for '\(Sep7ParameterName.memoType.rawValue)'",
+                                                        operationType: resultOpType,
+                                                        queryItems: queryItems)
+                        }
+                    case .hash:
+                        guard let decodedMemo = Data(base64Encoded: memo) else {
+                            return IsValidSep7UriResult(result: false, reason: "Parameter '\(Sep7ParameterName.memo.rawValue)' of memo type '\(Sep7ParameterName.memoType.rawValue)' must be base64 encoded",
+                                                        operationType: resultOpType,
+                                                        queryItems: queryItems)
+                        }
+                        do {
+                            let _ = try Memo(hash: decodedMemo)
+                        } catch {
+                            return IsValidSep7UriResult(result: false, reason: "Invalid '\(Sep7ParameterName.memo.rawValue)' for '\(Sep7ParameterName.memoType.rawValue)'",
+                                                        operationType: resultOpType,
+                                                        queryItems: queryItems)
+                        }
+                    case .returnMemo:
+                        guard let decodedMemo = Data(base64Encoded: memo) else {
+                            return IsValidSep7UriResult(result: false, reason: "Parameter '\(Sep7ParameterName.memo.rawValue)' of memo type '\(Sep7ParameterName.memoType.rawValue)' must be base64 encoded",
+                                                        operationType: resultOpType,
+                                                        queryItems: queryItems)
+                        }
+                        do {
+                            let _ = try Memo(returnHash: decodedMemo)
+                        } catch {
+                            return IsValidSep7UriResult(result: false, reason: "Invalid '\(Sep7ParameterName.memo.rawValue)' for '\(Sep7ParameterName.memoType.rawValue)'",
+                                                        operationType: resultOpType,
+                                                        queryItems: queryItems)
+                        }
                     }
                 }
                 

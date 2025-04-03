@@ -73,4 +73,9 @@ public class Wallet {
         return Recovery(cfg: cfg, servers: servers)
     }
     
+    /// Parses the given SEP-7 url and returns Sep7Pay or Sep7Tx if valid. Otherwise it throws a ValidationError
+    public func parseSep7Uri(uri:String) throws -> Sep7 {
+        return try Sep7.parseSep7Uri(uri: uri)
+    }
+    
 }

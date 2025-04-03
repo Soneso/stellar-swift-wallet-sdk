@@ -77,6 +77,7 @@ Primary use of the SDK is to provide an easy way to connect to anchors via sets 
 - SEP-12: Providing KYC info
 - SEP-38: Quotes
 - SEP-30: Recovery
+- SEP-07: URI Scheme to facilitate delegated signing
 
 ## Chapters
 
@@ -86,6 +87,7 @@ Primary use of the SDK is to provide an easy way to connect to anchors via sets 
 - [Quotes](https://github.com/Soneso/stellar-swift-wallet-sdk/blob/main/docs/quotes.md)
 - [Programmatic Deposit and Withdrawal](https://github.com/Soneso/stellar-swift-wallet-sdk/blob/main/docs/transfer.md)
 - [Recovery](https://github.com/Soneso/stellar-swift-wallet-sdk/blob/main/docs/recovery.md)
+- [URI Scheme to facilitate delegated signing](https://github.com/Soneso/stellar-swift-wallet-sdk/blob/main/docs/uri.md)
 
 ## Next
 
