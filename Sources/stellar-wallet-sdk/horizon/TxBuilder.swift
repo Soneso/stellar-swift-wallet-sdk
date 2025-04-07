@@ -243,7 +243,7 @@ public class TxBuilder:CommonTxBuilder {
     ///   - asset: The asset for which support is added.
     ///   - limit: Optional. The trust limit for the asset. If not set it defaults to max.
     ///
-    func addAssetSupport(asset:IssuedAssetId, limit:Decimal?) -> TxBuilder {
+    func addAssetSupport(asset:IssuedAssetId, limit:Decimal? = nil) -> TxBuilder {
         super.addAssetSupport(asset: asset, limit: limit)
         return self
     }
@@ -577,7 +577,7 @@ public class SponsoringBuilder:CommonTxBuilder {
     ///   - asset: The asset for which support is added.
     ///   - limit: Optional. The trust limit for the asset. If not set it defaults to max.
     ///
-    func addAssetSupport(asset:IssuedAssetId, limit:Decimal?) -> SponsoringBuilder {
+    func addAssetSupport(asset:IssuedAssetId, limit:Decimal? = nil) -> SponsoringBuilder {
         super.addAssetSupport(asset: asset, limit: limit)
         return self
     }

@@ -98,9 +98,10 @@ public class Sep24 {
     ///   - extraFiles: Additional files for the request. E.g. SEP-9 files
     ///
     public func withdraw(assetId:StellarAssetId,
-                                 authToken:AuthToken,
-                                 extraFields:[String:String]? = nil,
-                                 extraFiles:[String:Data]? = nil) async throws -> InteractiveFlowResponse {
+                         authToken:AuthToken,
+                         extraFields:[String:String]? = nil,
+                         extraFiles:[String:Data]? = nil,
+                         withdrawalAccount: String? = nil) async throws -> InteractiveFlowResponse {
         let tomlInfo = try await anchor.info
         
         guard let transferServerSep24 = tomlInfo.services.sep24?.transferServerSep24,
@@ -123,6 +124,7 @@ public class Sep24 {
         request.assetIssuer = assetIssuer
         request.customFields = extraFields
         request.customFiles = extraFiles
+        request.account = withdrawalAccount
         
         guard let asset = try await info.withdrawServiceAsset(assetId: assetId) else {
             throw InteractiveFlowError.assetNotAcceptedForWithdrawal(assetId: assetId)
