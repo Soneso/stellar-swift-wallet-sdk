@@ -12,16 +12,17 @@ Get anchor information from a TOML file  using [SEP-001](https://github.com/stel
 let anchorInfo = try await anchor.info
 ```
 
-Upload KYC information to anchors using [SEP-012](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0012.md):
-
-```swift
-// not yet implemented
-```
-
 Authenticate an account with the anchor using [SEP-010](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md):
 
 ```swift
 let authToken = try await anchor.sep10.authenticate(userKeyPair: accountKeyPair)
+```
+
+Upload KYC information to anchors using [SEP-012](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0012.md):
+
+```swift
+let sep12 = try await anchor.sep12(authToken: authToken)
+let addResponse = try await sep12.add(sep9Info: ["account_id" : accountId])
 ```
 
 Available anchor services and information about them. For example, interactive deposit/withdrawal limits, currency, fees, payment methods
