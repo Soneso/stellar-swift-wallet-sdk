@@ -156,7 +156,7 @@ let sep9Files = [
   "photo_id_back": photoIdBack,
 ]
 
-addResponse = try await sep12.add(sep9Info: sep9Info, sep9Files: sep9Files)
+let addResponse = try await sep12.add(sep9Info: sep9Info, sep9Files: sep9Files)
 ```
 
 

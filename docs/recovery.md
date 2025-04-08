@@ -121,14 +121,14 @@ First, we need to authenticate with both recovery servers:
 let sep10 = try await recovery.sep10Auth(key: first)
 let authToken = try await sep10.authenticate(userKeyPair: recoveryKp)
 
-let auth1 = authToken.jwt;
+let auth1 = authToken.jwt
 let auth2 = "..."; // get other token e.g. firebase token
 ```
 
 We need to know the recovery signer addresses that will be used to sign the transaction. You can get them from either the recoverable wallet object we created earlier (`recoverableWallet.signers`), or via fetching account info from recovery servers.
 
 ```swift
-let recoverySigners = recoverableWallet.signers;
+let recoverySigners = recoverableWallet.signers
 ```
 
 Next, create a new device key and retrieve a signed transaction that replaces the device key:
