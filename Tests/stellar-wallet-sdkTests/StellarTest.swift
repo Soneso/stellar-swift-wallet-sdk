@@ -10,13 +10,23 @@ import stellarsdk
 @testable import stellar_wallet_sdk
 
 final class StellarTest: XCTestCase {
-    let wallet = Wallet.testNet
-    let accountKeyPair = Wallet.testNet.stellar.account.createKeyPair()
+    let testMode = "testnet" // "mainnet"
+    var wallet:Wallet!
+    var accountKeyPair:SigningKeyPair!
+
     
     override func setUp() async throws {
         try await super.setUp()
-        try await wallet.stellar.fundTestNetAccount(address: accountKeyPair.address)
-        
+        if "testnet" == testMode {
+            wallet = Wallet.testNet
+            accountKeyPair = Wallet.testNet.stellar.account.createKeyPair()
+            try await wallet.stellar.fundTestNetAccount(address: accountKeyPair.address)
+        } else if "mainnet" == testMode {
+            wallet = Wallet.publicNet
+            accountKeyPair = try SigningKeyPair(secretKey: "SB4GT2E3K3ASQFUZS7EMFEDDOLE2W5FONPXLBYRYGE5UHFPIHEN7NEXJ")
+        } else {
+            XCTFail("testMode must be testnet or mainnet")
+        }
     }
 
     func testGetInfo() async throws {
@@ -34,7 +44,7 @@ final class StellarTest: XCTestCase {
         let newAccountKeyPair = stellar.account.createKeyPair()
         
         // create transaction
-        let tx = try txBuilder.createAccount(newAccount: newAccountKeyPair, startingBalance: 100.1).build()
+        let tx = try txBuilder.createAccount(newAccount: newAccountKeyPair, startingBalance: 1.1).build()
         
         // sign transaction
         stellar.sign(tx: tx, keyPair: accountKeyPair)
@@ -48,14 +58,20 @@ final class StellarTest: XCTestCase {
         let balances = accountInfo.balances
         XCTAssertEqual(1, balances.count)
         XCTAssertEqual("native", balances.first!.assetType)
-        XCTAssertEqual(Double(balances.first!.balance), 100.1)
+        XCTAssertEqual(Double(balances.first!.balance), 1.1)
+        
+        if "mainnet" == testMode {
+            // merge back to save XLM
+            try await merge(signer: newAccountKeyPair, destination: accountKeyPair.address)
+        }
+        
     }
     
     func testCreateSponsoredAccount() async throws {
         let stellar = wallet.stellar
         let account = stellar.account
         
-        let sponsorKeyPair = accountKeyPair
+        let sponsorKeyPair = accountKeyPair!
         
         // create transaction builder
         let txBuilder = try await stellar.transaction(sourceAddress: sponsorKeyPair)
@@ -94,7 +110,14 @@ final class StellarTest: XCTestCase {
         let newAccountAddress = newAccountPublicKeyPair.address
         
         // fund the new test account
-        try await stellar.fundTestNetAccount(address: newAccountAddress)
+        if "testnet" == testMode {
+            try await stellar.fundTestNetAccount(address: newAccountAddress)
+        } else if "mainnet" == testMode {
+            try await fundMainnetAccount(source: accountKeyPair, newAccount: newAccountPublicKeyPair)
+        } else {
+            XCTFail("testMode must be testnet or mainnet")
+        }
+        
         
         // create transaction
         let tx = try await stellar.transaction(sourceAddress:newAccountPublicKeyPair).lockAccountMasterKey().build()
@@ -118,18 +141,24 @@ final class StellarTest: XCTestCase {
         let stellar = wallet.stellar
         let account = stellar.account
         
-        let sponsorKeyPair = accountKeyPair
-        
-        // create transaction builder
-        let txBuilder = try await stellar.transaction(sourceAddress: sponsorKeyPair)
-        
+        let sponsorKeyPair = accountKeyPair!
+                
         // keypairs identifying the new account to be locked
         let newAccountSigningKeyPair = account.createKeyPair()
         let newAccountPublicKeyPair = newAccountSigningKeyPair.toPublicKeyPair()
         let newAccountAddress = newAccountPublicKeyPair.address
         
         // fund the new test account
-        try await stellar.fundTestNetAccount(address: newAccountAddress)
+        if "testnet" == testMode {
+            try await stellar.fundTestNetAccount(address: newAccountAddress)
+        } else if "mainnet" == testMode {
+            try await fundMainnetAccount(source: accountKeyPair, newAccount: newAccountPublicKeyPair)
+        } else {
+            XCTFail("testMode must be testnet or mainnet")
+        }
+        
+        // create transaction builder
+        let txBuilder = try await stellar.transaction(sourceAddress: sponsorKeyPair)
         
         // create transaction
         let tx = try txBuilder.sponsoring(sponsorAccount: sponsorKeyPair,
@@ -137,7 +166,7 @@ final class StellarTest: XCTestCase {
                                       sponsoredAccount: newAccountPublicKeyPair).build()
         
         // sign transaction
-        stellar.sign(tx: tx, keyPair: accountKeyPair)
+        stellar.sign(tx: tx, keyPair: sponsorKeyPair)
         stellar.sign(tx: tx, keyPair: newAccountSigningKeyPair)
         
         // submit transaction
@@ -211,21 +240,27 @@ final class StellarTest: XCTestCase {
         let stellar = wallet.stellar
         let account = stellar.account
         
-        let sponsorKeyPair = accountKeyPair
-        
-        // create transaction builder
-        let txBuilder = try await stellar.transaction(sourceAddress: sponsorKeyPair)
-        
-        // keypairs identifying the new account to be locked
+        let sponsorKeyPair = accountKeyPair!
+                
+        // keypairs identifying the new account
         let newAccountSigningKeyPair = account.createKeyPair()
         let newAccountPublicKeyPair = newAccountSigningKeyPair.toPublicKeyPair()
         let newAccountAddress = newAccountPublicKeyPair.address
         
         // fund the new test account
-        try await stellar.fundTestNetAccount(address: newAccountAddress)
+        if "testnet" == testMode {
+            try await stellar.fundTestNetAccount(address: newAccountAddress)
+        } else if "mainnet" == testMode {
+            try await fundMainnetAccount(source: accountKeyPair, newAccount: newAccountPublicKeyPair)
+        } else {
+            XCTFail("testMode must be testnet or mainnet")
+        }
         
         // public keypair of new signer
         let newSignerPublicKeyPair = account.createKeyPair().toPublicKeyPair()
+        
+        // create transaction builder
+        let txBuilder = try await stellar.transaction(sourceAddress: sponsorKeyPair)
         
         // create sponsored transaction (add signer)
         var tx = try txBuilder.sponsoring(sponsorAccount: sponsorKeyPair,
@@ -273,6 +308,11 @@ final class StellarTest: XCTestCase {
         
         XCTAssertEqual(1, signers.count)
         XCTAssertNotEqual(11, signers.first!.weight)
+        
+        if "mainnet" == testMode {
+            // merge back to save XLM
+            try await merge(signer: newAccountSigningKeyPair, destination: accountKeyPair.address)
+        }
     }
     
     func testAddAndRemoveAssetSupport() async throws {
@@ -281,7 +321,10 @@ final class StellarTest: XCTestCase {
         
         // define asset
         let assetCode = "USDC"
-        let assetIssuerAccountId = "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5"
+        var assetIssuerAccountId = "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5"
+        if "mainnet" == testMode {
+            assetIssuerAccountId = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
+        }
         let asset = try IssuedAssetId(
             code: assetCode,
             issuer: assetIssuerAccountId)
@@ -337,25 +380,34 @@ final class StellarTest: XCTestCase {
         let stellar = wallet.stellar
         let account = stellar.account
         
-        let sponsorKeyPair = accountKeyPair
-        
-        // create transaction builder
-        let txBuilder = try await stellar.transaction(sourceAddress: sponsorKeyPair)
-        
+        let sponsorKeyPair = accountKeyPair!
+                
         // keypairs identifying the new account to be sponsored
         let newAccountSigningKeyPair = account.createKeyPair()
         let newAccountPublicKeyPair = newAccountSigningKeyPair.toPublicKeyPair()
         let newAccountAddress = newAccountPublicKeyPair.address
         
         // fund the new test account
-        try await stellar.fundTestNetAccount(address: newAccountAddress)
+        if "testnet" == testMode {
+            try await stellar.fundTestNetAccount(address: newAccountAddress)
+        } else if "mainnet" == testMode {
+            try await fundMainnetAccount(source: accountKeyPair, newAccount: newAccountPublicKeyPair)
+        } else {
+            XCTFail("testMode must be testnet or mainnet")
+        }
         
         // define asset
         let assetCode = "USDC"
-        let assetIssuerAccountId = "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5"
+        var assetIssuerAccountId = "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5"
+        if "mainnet" == testMode {
+            assetIssuerAccountId = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
+        }
         let asset = try IssuedAssetId(
             code: assetCode,
             issuer: assetIssuerAccountId)
+        
+        // create transaction builder
+        let txBuilder = try await stellar.transaction(sourceAddress: sponsorKeyPair)
         
         // create sponsored transaction (add trustline)
         var tx = try txBuilder.sponsoring(sponsorAccount: sponsorKeyPair,
@@ -403,6 +455,11 @@ final class StellarTest: XCTestCase {
         newAccountInfo = try await account.getInfo(accountAddress: newAccountAddress)
         balances = newAccountInfo.balances
         XCTAssertEqual(1, balances.count)
+        
+        if "mainnet" == testMode {
+            // merge back to save XLM
+            try await merge(signer: newAccountSigningKeyPair, destination: accountKeyPair.address)
+        }
     }
     
     
@@ -412,11 +469,19 @@ final class StellarTest: XCTestCase {
         // create 2 new accounts for testing and fund them
         let sourceAccountKeyPair = stellar.account.createKeyPair()
         let sourceAccountAddress = sourceAccountKeyPair.address
-        try await stellar.fundTestNetAccount(address: sourceAccountAddress)
         
         let destinationAccountKeyPair = stellar.account.createKeyPair()
         let destinationAccountAddress = destinationAccountKeyPair.address
-        try await stellar.fundTestNetAccount(address: destinationAccountAddress)
+        
+        if "testnet" == testMode {
+            try await stellar.fundTestNetAccount(address: sourceAccountAddress)
+            try await stellar.fundTestNetAccount(address: destinationAccountAddress)
+        } else if "mainnet" == testMode {
+            try await fundMainnetAccount(source: accountKeyPair, newAccount: sourceAccountKeyPair)
+            try await fundMainnetAccount(source: accountKeyPair, newAccount: destinationAccountKeyPair)
+        } else {
+            XCTFail("testMode must be testnet or mainnet")
+        }
         
         // create transaction builder
         let txBuilder = try await stellar.transaction(
@@ -445,7 +510,14 @@ final class StellarTest: XCTestCase {
         let balances = accountInfo.balances
         XCTAssertEqual(1, balances.count)
         XCTAssertEqual("native", balances.first!.assetType)
-        XCTAssertTrue(Double(balances.first!.balance)! > 10.000)
+        if "testnet" == testMode {
+            XCTAssertTrue(Double(balances.first!.balance)! > 10.000)
+        }
+        
+        if "mainnet" == testMode {
+            // merge back to save XLM
+            try await merge(signer: destinationAccountKeyPair, destination: accountKeyPair.address)
+        }
     }
     
     
@@ -456,14 +528,22 @@ final class StellarTest: XCTestCase {
         // create a new account for testing and fund it
         let sourceAccountKeyPair = account.createKeyPair()
         let sourceAccountAddress = sourceAccountKeyPair.address
-        try await stellar.fundTestNetAccount(address: sourceAccountAddress)
+        
+        // fund the new test account
+        if "testnet" == testMode {
+            try await stellar.fundTestNetAccount(address: sourceAccountAddress)
+        } else if "mainnet" == testMode {
+            try await fundMainnetAccount(source: accountKeyPair, newAccount: sourceAccountKeyPair.toPublicKeyPair())
+        } else {
+            XCTFail("testMode must be testnet or mainnet")
+        }
         
         // create transaction builder
         let txBuilder = try await stellar.transaction(
             sourceAddress: sourceAccountKeyPair)
         
         // create transaction
-        let tx = try txBuilder.setThreshold(low: 1, medium: 10, high: 30).build()
+        let tx = try txBuilder.setThreshold(low: 1, medium: 10, high: 1).build()
         
         // sign transaction
         stellar.sign(tx: tx, keyPair: sourceAccountKeyPair)
@@ -477,17 +557,19 @@ final class StellarTest: XCTestCase {
         
         XCTAssertEqual(1, accountInfo.thresholds.lowThreshold)
         XCTAssertEqual(10, accountInfo.thresholds.medThreshold)
-        XCTAssertEqual(30, accountInfo.thresholds.highThreshold)
+        XCTAssertEqual(1, accountInfo.thresholds.highThreshold)
+        
+        if "mainnet" == testMode {
+            // merge back to save XLM
+            try await merge(signer: sourceAccountKeyPair, destination: accountKeyPair.address)
+        }
     }
     
     func testSponsoredSetTreshold() async throws {
         let stellar = wallet.stellar
         let account = stellar.account
         
-        let sponsorKeyPair = accountKeyPair
-        
-        // create transaction builder
-        let txBuilder = try await stellar.transaction(sourceAddress: sponsorKeyPair)
+        let sponsorKeyPair = accountKeyPair!
         
         // keypairs identifying the new account to be used
         let newAccountSigningKeyPair = account.createKeyPair()
@@ -495,11 +577,20 @@ final class StellarTest: XCTestCase {
         let newAccountAddress = newAccountPublicKeyPair.address
         
         // fund the new test account
-        try await stellar.fundTestNetAccount(address: newAccountAddress)
+        if "testnet" == testMode {
+            try await stellar.fundTestNetAccount(address: newAccountAddress)
+        } else if "mainnet" == testMode {
+            try await fundMainnetAccount(source: accountKeyPair, newAccount: newAccountPublicKeyPair)
+        } else {
+            XCTFail("testMode must be testnet or mainnet")
+        }
+        
+        // create transaction builder
+        let txBuilder = try await stellar.transaction(sourceAddress: sponsorKeyPair)
         
         // create transaction
         let tx = try txBuilder.sponsoring(sponsorAccount: sponsorKeyPair,
-                                      buildingFunction: { (builder) in builder.setThreshold(low: 1, medium: 10, high: 30)},
+                                      buildingFunction: { (builder) in builder.setThreshold(low: 1, medium: 10, high: 1)},
                                       sponsoredAccount: newAccountPublicKeyPair).build()
         
         // sign transaction
@@ -514,7 +605,12 @@ final class StellarTest: XCTestCase {
         let accountInfo = try await account.getInfo(accountAddress: newAccountAddress)        
         XCTAssertEqual(1, accountInfo.thresholds.lowThreshold)
         XCTAssertEqual(10, accountInfo.thresholds.medThreshold)
-        XCTAssertEqual(30, accountInfo.thresholds.highThreshold)
+        XCTAssertEqual(1, accountInfo.thresholds.highThreshold)
+        
+        if "mainnet" == testMode {
+            // merge back to save XLM
+            try await merge(signer: newAccountSigningKeyPair, destination: accountKeyPair.address)
+        }
     }
     
     func testMakeFeeBump() async throws {
@@ -525,11 +621,19 @@ final class StellarTest: XCTestCase {
         
         let sponsorKeyPair = account.createKeyPair()
         let sponsorAddress = sponsorKeyPair.address
-        try await stellar.fundTestNetAccount(address: sponsorAddress)
         
         let sponsoredKeyPair = account.createKeyPair()
         let sponsoredAddress = sponsoredKeyPair.address
-        try await stellar.fundTestNetAccount(address: sponsoredAddress)
+        
+        if "testnet" == testMode {
+            try await stellar.fundTestNetAccount(address: sponsorAddress)
+            try await stellar.fundTestNetAccount(address: sponsoredAddress)
+        } else if "mainnet" == testMode {
+            try await fundMainnetAccount(source: accountKeyPair, newAccount: sponsorKeyPair, startingBalance: 2.0)
+            try await fundMainnetAccount(source: accountKeyPair, newAccount: sponsoredKeyPair)
+        } else {
+            XCTFail("testMode must be testnet or mainnet")
+        }
         
         let txBuilder = try await stellar.transaction(sourceAddress: sponsoredKeyPair)
         
@@ -551,7 +655,9 @@ final class StellarTest: XCTestCase {
         // validate
         let myAccount = try await account.getInfo(accountAddress: sponsoredAddress)
         XCTAssertEqual(1, myAccount.balances.count)
-        XCTAssertEqual(10000, Double(myAccount.balances.first!.balance))
+        if "testnet" == testMode {
+            XCTAssertEqual(10000, Double(myAccount.balances.first!.balance))
+        }
         let signers = myAccount.signers
         XCTAssertEqual(2, signers.count)
         var newSignerFound = false
@@ -584,9 +690,20 @@ final class StellarTest: XCTestCase {
         case .invalidXdrErr:
             XCTFail("sould not be invalid xdr")
         }
+        
+        if "mainnet" == testMode {
+            // merge back to save XLM
+            try await merge(signer: replaceWith, destination: accountKeyPair.address, sourceAddress: sponsoredKeyPair)
+            try await merge(signer: sponsorKeyPair, destination: accountKeyPair.address)
+        }
     }
     
     func testUseXdrToSendTxData() async throws {
+        
+        if "mainnet" == testMode {
+            return // no serverside signer available for mainnet
+        }
+        
         let stellar = wallet.stellar
         let account = stellar.account
         
@@ -594,7 +711,7 @@ final class StellarTest: XCTestCase {
         
         // prevent error in case of testnet reset
         if !(try await account.accountExists(accountAddress: sponsorKeyPair.address)) {
-            try await wallet.stellar.fundTestNetAccount(address: sponsorKeyPair.address)
+            try await stellar.fundTestNetAccount(address: sponsorKeyPair.address)
         }
 
         let newKeyPair = account.createKeyPair()
@@ -649,15 +766,17 @@ final class StellarTest: XCTestCase {
         let account = stellar.account
         
         let account1KeyPair = account.createKeyPair()
-        try await stellar.fundTestNetAccount(address: account1KeyPair.address)
         let account2KeyPair = account.createKeyPair()
-        try await stellar.fundTestNetAccount(address: account2KeyPair.address)
         
-        // this test is more effective on public net
-        // change wallet on top to: var wallet = Wallet.publicNet;
-        // uncomment and fill:
-        // let account1KeyPair = try SigningKeyPair(secretKey: "S...")
-        // let account2KeyPair = try PublicKeyPair(accountId: "GBH5Y77GMEOCYQOXGAMJY4C65RAMBXKZBDHA5XBNLJQUC3Z2HGQP5OC5")
+        if "testnet" == testMode {
+            try await stellar.fundTestNetAccount(address: account1KeyPair.address)
+            try await stellar.fundTestNetAccount(address: account2KeyPair.address)
+        } else if "mainnet" == testMode {
+            try await fundMainnetAccount(source: accountKeyPair, newAccount: account1KeyPair, startingBalance: 2.0)
+            try await fundMainnetAccount(source: accountKeyPair, newAccount: account2KeyPair, startingBalance: 1.0)
+        } else {
+            XCTFail("testMode must be testnet or mainnet")
+        }
         
         let success =
         try await stellar.submitWithFeeIncrease(sourceAddress: account1KeyPair,
@@ -667,7 +786,7 @@ final class StellarTest: XCTestCase {
                                               buildingFunction: {
                                                     (builder) in try! builder.transfer(destinationAddress: account2KeyPair.address,
                                                                                        assetId: NativeAssetId(),
-                                                                                       amount: 10.0)})
+                                                                                       amount: 0.2)})
         
         XCTAssertTrue(success)
         
@@ -675,8 +794,14 @@ final class StellarTest: XCTestCase {
         let newAccount = try await account.getInfo(accountAddress: account2KeyPair.address)
         let balance = newAccount.balances.first!
         XCTAssertEqual("native", balance.assetType)
-        XCTAssertEqual(10010.0, Double(balance.balance))
-        
+        if "testnet" == testMode {
+            XCTAssertEqual(10000.2, Double(balance.balance))
+        } else if "mainnet" == testMode {
+            XCTAssertEqual(1.2, Double(balance.balance))
+            // merge back to save XLM
+            try await merge(signer: account1KeyPair, destination: accountKeyPair.address)
+            try await merge(signer: account2KeyPair, destination: accountKeyPair.address)
+        }
     }
     
     func testPathPayments() async throws {
@@ -684,7 +809,14 @@ final class StellarTest: XCTestCase {
         let account = stellar.account
         
         let keyPairA = account.createKeyPair()
-        try await stellar.fundTestNetAccount(address: keyPairA.address)
+        if "testnet" == testMode {
+            try await stellar.fundTestNetAccount(address: keyPairA.address)
+        } else if "mainnet" == testMode {
+            try await fundMainnetAccount(source: accountKeyPair, newAccount: keyPairA, startingBalance: 10.0)
+        } else {
+            XCTFail("testMode must be testnet or mainnet")
+        }
+        
         let accountAId = keyPairA.address
         
         let keyPairB = account.createKeyPair()
@@ -703,10 +835,10 @@ final class StellarTest: XCTestCase {
         var txBuilder = try await stellar.transaction(sourceAddress: keyPairA)
         
         let createAccountsTransaction = try txBuilder
-            .createAccount(newAccount: keyPairB, startingBalance: 10)
-            .createAccount(newAccount: keyPairC, startingBalance: 10)
-            .createAccount(newAccount: keyPairD, startingBalance: 10)
-            .createAccount(newAccount: keyPairE, startingBalance: 10)
+            .createAccount(newAccount: keyPairB, startingBalance: 2.6)
+            .createAccount(newAccount: keyPairC, startingBalance: 1.6)
+            .createAccount(newAccount: keyPairD, startingBalance: 2.6)
+            .createAccount(newAccount: keyPairE, startingBalance: 1.6)
             .build();
         
         stellar.sign(tx: createAccountsTransaction, keyPair: keyPairA)
@@ -758,7 +890,7 @@ final class StellarTest: XCTestCase {
         XCTAssertTrue(success)
         
         // fund accounts with issued assets
-        txBuilder = try await stellar.transaction(sourceAddress: keyPairA);
+        txBuilder = try await stellar.transaction(sourceAddress: keyPairA)
         let fundTransaction = try txBuilder
             .transfer(destinationAddress: accountCId, assetId: iomAsset, amount: 100)
             .transfer(destinationAddress: accountBId, assetId: iomAsset, amount: 100)
@@ -928,6 +1060,112 @@ final class StellarTest: XCTestCase {
         }
         XCTAssertTrue(moonFound)
         
+        // if "mainnet" == testMode {
+            // cleanup to save lumens
+            var iomBalance = try await getBalance(accountId: keyPairB.address, asset: iomAsset)
+            var ecoBalance = try await getBalance(accountId: keyPairB.address, asset: ecoAsset)
+            var offerId:Int64? = nil
+            var offersEnum = await stellar.server.offers.getOffers(forAccount: keyPairB.address)
+            switch offersEnum {
+            case .success(let page):
+                offerId = Int64(page.records.first!.id)
+            case .failure(_):
+                break
+            }
+            
+            let delSellOfferOpB = ManageSellOfferOperation(sourceAccountId: accountBId,
+                                                    selling: ecoAsset.toAsset(),
+                                                    buying: iomAsset.toAsset(),
+                                                    amount: 0,
+                                                    price: Price(numerator: 1, denominator: 2),
+                                                    offerId: offerId!)
+        
+            var cTx = try await stellar.transaction(sourceAddress: keyPairB)
+                .transfer(destinationAddress: keyPairA.address, assetId: iomAsset, amount: Decimal(string:iomBalance!)!)
+                .addOperation(operation: delSellOfferOpB)
+                .removeAssetSupport(asset: iomAsset)
+                .transfer(destinationAddress: keyPairA.address, assetId: ecoAsset, amount: Decimal(string:ecoBalance!)!)
+                .removeAssetSupport(asset: ecoAsset)
+                .accountMerge(destinationAddress: accountKeyPair.address).build()
+            stellar.sign(tx: cTx, keyPair: keyPairB)
+            let _ = try await stellar.submitTransaction(signedTransaction: cTx)
+            
+            iomBalance = try await getBalance(accountId: keyPairC.address, asset: iomAsset)
+            cTx = try await stellar.transaction(sourceAddress: keyPairC)
+                .transfer(destinationAddress: keyPairA.address, assetId: iomAsset, amount: Decimal(string:iomBalance!)!)
+                .removeAssetSupport(asset: iomAsset)
+                .accountMerge(destinationAddress: accountKeyPair.address).build()
+            stellar.sign(tx: cTx, keyPair: keyPairC)
+            let _ = try await stellar.submitTransaction(signedTransaction: cTx)
+            
+            ecoBalance = try await getBalance(accountId: keyPairD.address, asset: ecoAsset)
+            var moonBalance = try await getBalance(accountId: keyPairD.address, asset: moonAsset)
+        
+            offersEnum = await stellar.server.offers.getOffers(forAccount: keyPairD.address)
+            switch offersEnum {
+            case .success(let page):
+                offerId = Int64(page.records.first!.id)
+            case .failure(_):
+                break
+            }
+        
+            let delSellOfferOpD = ManageSellOfferOperation(sourceAccountId: accountDId,
+                                                        selling: moonAsset.toAsset(),
+                                                        buying: ecoAsset.toAsset(),
+                                                        amount: 0,
+                                                        price: Price(numerator: 1, denominator: 2),
+                                                        offerId: offerId!)
+            cTx = try await stellar.transaction(sourceAddress: keyPairD)
+                .addOperation(operation: delSellOfferOpD)
+                .transfer(destinationAddress: keyPairA.address, assetId: ecoAsset, amount: Decimal(string:ecoBalance!)!)
+                .transfer(destinationAddress: keyPairA.address, assetId: moonAsset, amount: Decimal(string:moonBalance!)!)
+                .removeAssetSupport(asset: ecoAsset)
+                .removeAssetSupport(asset: moonAsset)
+                .accountMerge(destinationAddress: accountKeyPair.address).build()
+            stellar.sign(tx: cTx, keyPair: keyPairD)
+            let _ = try await stellar.submitTransaction(signedTransaction: cTx)
+            
+            moonBalance = try await getBalance(accountId: keyPairE.address, asset: moonAsset)
+            cTx = try await stellar.transaction(sourceAddress: keyPairE)
+                .transfer(destinationAddress: keyPairA.address, assetId: moonAsset, amount: Decimal(string:moonBalance!)!)
+                .removeAssetSupport(asset: moonAsset)
+                .accountMerge(destinationAddress: accountKeyPair.address).build()
+            stellar.sign(tx: cTx, keyPair: keyPairE)
+            let _ = try await stellar.submitTransaction(signedTransaction: cTx)
+        
+            try await merge(signer: keyPairA, destination: accountKeyPair.address)
+        //}
+    }
+        
+    func fundMainnetAccount(source:SigningKeyPair, newAccount:AccountKeyPair, startingBalance:Decimal? = nil) async throws {
+        let stellar = wallet.stellar
+        let txBuilder = try await stellar.transaction(sourceAddress: source)
+        let tx = try txBuilder.createAccount(newAccount: newAccount, startingBalance: startingBalance ?? 1.01).build()
+        stellar.sign(tx: tx, keyPair: source)
+        let success = try await stellar.submitTransaction(signedTransaction: tx)
+        XCTAssertTrue(success)
+    }
+    
+    func merge(signer:SigningKeyPair, destination:String, sourceAddress:AccountKeyPair? = nil ) async throws {
+        let stellar = wallet.stellar
+        let txBuilder = try await stellar.transaction(sourceAddress: sourceAddress ?? signer)
+        let tx = try txBuilder.accountMerge(destinationAddress: destination).build()
+        stellar.sign(tx: tx, keyPair: signer)
+        let success = try await stellar.submitTransaction(signedTransaction: tx)
+        XCTAssertTrue(success)
+    }
+    
+    func getBalance(accountId:String, asset:IssuedAssetId) async throws -> String? {
+        let account = wallet.stellar.account
+        let info = try await account.getInfo(accountAddress: accountId)
+        var balance:String? = nil
+        info.balances.forEach{  item in
+            if let issuer = item.assetIssuer, let assetCode = item.assetCode,
+               "\(assetCode):\(issuer)" == asset.id {
+                balance = item.balance
+            }
+        }
+        return balance
     }
         
 }
