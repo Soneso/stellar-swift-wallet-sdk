@@ -23,7 +23,7 @@ final class StellarTest: XCTestCase {
             try await wallet.stellar.fundTestNetAccount(address: accountKeyPair.address)
         } else if "mainnet" == testMode {
             wallet = Wallet.publicNet
-            accountKeyPair = try SigningKeyPair(secretKey: "SB4GT2E3K3ASQFUZS7EMFEDDOLE2W5FONPXLBYRYGE5UHFPIHEN7NEXJ")
+            accountKeyPair = try SigningKeyPair(secretKey: "S...")
         } else {
             XCTFail("testMode must be testnet or mainnet")
         }
