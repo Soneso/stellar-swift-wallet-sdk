@@ -19,7 +19,7 @@ final class StellarTest: XCTestCase {
         try await super.setUp()
         if "testnet" == testMode {
             wallet = Wallet.testNet
-            accountKeyPair = Wallet.testNet.stellar.account.createKeyPair()
+            accountKeyPair = SigningKeyPair.random
             try await wallet.stellar.fundTestNetAccount(address: accountKeyPair.address)
         } else if "mainnet" == testMode {
             wallet = Wallet.publicNet
