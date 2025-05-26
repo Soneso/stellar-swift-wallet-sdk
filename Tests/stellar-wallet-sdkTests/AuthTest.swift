@@ -118,7 +118,7 @@ final class AuthTest: XCTestCase {
     
     func clientDomainRemoteTest() async throws {
         let anchor = wallet.anchor(homeDomain: "testanchor.stellar.org")
-        let authKey = wallet.stellar.account.createKeyPair()
+        let authKey = SigningKeyPair.random
         
         // Client domain signer src: https://replit.com/@crogobete/ClientDomainSigner#main.py
         
@@ -778,7 +778,7 @@ final class AuthTestRemote: XCTestCase {
         let anchor = wallet.anchor(homeDomain: "testanchor.stellar.org")
         let info = try await anchor.info
         XCTAssertEqual("https://testanchor.stellar.org/auth", info.webAuthEndpoint)
-        XCTAssertEqual("GCUZ6YLL5RQBTYLTTQLPCM73C5XAIUGK2TIMWQH7HPSGWVS2KJ2F3CHS", info.signingKey)
+        XCTAssertEqual("GCHLHDBOKG2JWMJQBTLSL5XG6NO7ESXI2TAQKZXCXWXB5WI2X6W233PR", info.signingKey)
         
         let sep10 = try await anchor.sep10
         let accountKeyPair = wallet.stellar.account.createKeyPair()
