@@ -14,7 +14,8 @@ public class GetCustomerResponse {
     public var fields:[String:Field]?
     public var providedFields:[String:ProvidedField]?
     public var message:String?
-    init(info:GetCustomerInfoResponse) {
+    
+    internal init(info:GetCustomerInfoResponse) {
         self.id = info.id
         self.sep12Status = Sep12Status(rawValue: info.status) ?? Sep12Status.neesdInfo
         if let fields = info.fields {
@@ -34,8 +35,9 @@ public class GetCustomerResponse {
 }
 
 public class AddCustomerResponse {
-    var id:String
-    init(info:PutCustomerInfoResponse) {
+    public var id:String
+    
+    internal init(info:PutCustomerInfoResponse) {
         self.id = info.id
     }
 }
@@ -46,7 +48,7 @@ public class Field {
     public var choices:[String]?
     public var optional:Bool?
     
-    init(field:GetCustomerInfoField) {
+    internal init(field:GetCustomerInfoField) {
         self.type = FieldType(rawValue: field.type) ?? FieldType.string
         self.description = field.description
         if let choices = field.choices {
@@ -69,7 +71,7 @@ public class ProvidedField {
     public var sep12Status:Sep12Status?
     public var error:String?
     
-    init(field:GetCustomerInfoProvidedField) {
+    internal init(field:GetCustomerInfoProvidedField) {
         self.type = FieldType(rawValue: field.type) ?? FieldType.string
         self.description = field.description
         if let choices = field.choices {

@@ -325,8 +325,7 @@ public class Sep6Refunds {
     }
     
     
-    internal convenience init(refunds:stellarsdk.Refunds) {
-        
+    internal convenience init(refunds:stellarsdk.Refunds) {        
         var payments:[Sep6Payment]? = nil
         if let dPayments = refunds.payments {
             payments = []

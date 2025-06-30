@@ -7,8 +7,8 @@
 
 import stellarsdk
 
-extension FeeBumpTransaction {
-    public func toEnvelopeXdrBase64() -> String? {
+public extension FeeBumpTransaction {
+    func toEnvelopeXdrBase64() -> String? {
         do {
             return try encodedEnvelope()
         } catch {

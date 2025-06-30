@@ -11,7 +11,7 @@ import stellarsdk
 public class QuotesInfoResponse {
     public var assets: [QuoteInfoAsset]
     
-    init(info:Sep38InfoResponse) {
+    internal init(info:Sep38InfoResponse) {
         self.assets = []
         for asset in info.assets {
             self.assets.append(QuoteInfoAsset(asset: asset))
@@ -25,7 +25,7 @@ public class QuoteInfoAsset {
     public var buyDeliveryMethods:[QuoteBuyDeliveryMethod]?
     public var countryCodes:[String]?
  
-    init(asset:Sep38Asset) {
+    internal init(asset:Sep38Asset) {
         self.asset = asset.asset
         if let sellMethods = asset.sellDeliveryMethods {
             self.sellDeliveryMethods = []
@@ -53,7 +53,7 @@ public class QuoteSellDeliveryMethod {
     public var name:String
     public var description:String
     
-    init(method:Sep38SellDeliveryMethod) {
+    internal init(method:Sep38SellDeliveryMethod) {
         self.name = method.name
         self.description = method.description
     }
@@ -64,7 +64,7 @@ public class QuoteBuyDeliveryMethod {
     public var name:String
     public var description:String
     
-    init(method:Sep38BuyDeliveryMethod) {
+    internal init(method:Sep38BuyDeliveryMethod) {
         self.name = method.name
         self.description = method.description
     }
@@ -73,7 +73,7 @@ public class QuoteBuyDeliveryMethod {
 public class QuoteAssetIndicativePrices {
     public var buyAssets:[QuoteBuyAsset]
     
-    init(prices:Sep38PricesResponse) {
+    internal init(prices:Sep38PricesResponse) {
         self.buyAssets = []
         for asset in prices.buyAssets {
             self.buyAssets.append(QuoteBuyAsset(buyAsset: asset))
@@ -86,7 +86,7 @@ public class QuoteBuyAsset {
     public var price:String
     public var decimals:Int
     
-    init(buyAsset:Sep38BuyAsset) {
+    internal init(buyAsset:Sep38BuyAsset) {
         self.asset = buyAsset.asset
         self.price = buyAsset.price
         self.decimals = buyAsset.decimals
@@ -100,7 +100,7 @@ public class QuoteAssetPairIndicativePrice {
     public var buyAmount:String
     public var fee:ConversionFee
     
-    init(sep38Price:Sep38PriceResponse) {
+    internal init(sep38Price:Sep38PriceResponse) {
         self.totalPrice = sep38Price.totalPrice
         self.price = sep38Price.price
         self.sellAmount = sep38Price.sellAmount
@@ -114,7 +114,7 @@ public class ConversionFee {
     public var asset:String
     public var details: [ConversionFeeDetails]?
     
-    init(fee:Sep38Fee) {
+    internal init(fee:Sep38Fee) {
         self.total = fee.total
         self.asset = fee.asset
         if let details = fee.details {
@@ -131,7 +131,7 @@ public class ConversionFeeDetails {
     public var amount:String
     public var description:String?
     
-    init(details:Sep38FeeDetails) {
+    internal init(details:Sep38FeeDetails) {
         self.name = details.name
         self.amount = details.amount
         self.description = details.description
@@ -149,7 +149,7 @@ public class FirmQuote {
     public var buyAmount: String
     public var fee: ConversionFee
     
-    init(quote:Sep38QuoteResponse) {
+    internal init(quote:Sep38QuoteResponse) {
         self.id = quote.id
         self.expiresAt = quote.expiresAt
         self.totalPrice = quote.totalPrice

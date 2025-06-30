@@ -26,7 +26,7 @@ public protocol AssetId {
 ///
 ///  - Important: this class can not be used directly. It has a private initializer. Use `IssuedAssetId` or `NativeAssetId` classes instead.
 ///
-public class StellarAssetId: AssetId {
+public class StellarAssetId: AssetId, Hashable {
     /// id of the asset.
     /// E.g. `USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5` (code:issuer) for a stellar issued asset
     /// or `native` for stellar native asset (lumens, XLM)
@@ -53,7 +53,7 @@ public class StellarAssetId: AssetId {
     ///
     /// - Parameter asset: the `stellarsdk.Asset` to create a  `IssuedAssetId` or  `NativeAssetId`from
     ///
-    static func fromAsset(asset:stellarsdk.Asset) throws -> StellarAssetId {
+    public static func fromAsset(asset:stellarsdk.Asset) throws -> StellarAssetId {
         let type = asset.type
         switch type {
         case AssetType.ASSET_TYPE_CREDIT_ALPHANUM4, AssetType.ASSET_TYPE_CREDIT_ALPHANUM12:
@@ -69,12 +69,45 @@ public class StellarAssetId: AssetId {
         }
     }
     
+    /// Creates a  `IssuedAssetId` or  `NativeAssetId` from the given asset data
+    ///
+    ///  This function throws a validation error `ValidationError.invalidArgument` if the given data is not valid
+    ///
+    /// - Parameters:
+    ///   - type: type: one of "native", "credit_alphanum4", "credit_alphanum12"
+    ///   - code: asset code if not native
+    ///   - issuerAccountId: account id of the asset issuer if not a native asset
+    ///
+    public static func fromAssetData(type:String, code:String? = nil, issuerAccountId:String? = nil ) throws -> StellarAssetId {
+        
+        switch type {
+        case "credit_alphanum4", "credit_alphanum12":
+            do {
+                return try IssuedAssetId(code: code ?? "", issuer: issuerAccountId ?? "")
+            } catch {
+                throw ValidationError.invalidArgument(message: "invalid asset")
+            }
+        case "native":
+            return NativeAssetId()
+        default:
+            throw ValidationError.invalidArgument(message: "unknown or unsupported asset type: \(type)")
+        }
+    }
+    
     /// Converst this asset to a `stellarsdk.Asset`
     public func toAsset() -> stellarsdk.Asset {
         if (id == "native") {
             return Asset(type:AssetType.ASSET_TYPE_NATIVE)!
         }
         return Asset(canonicalForm: self.id)!
+    }
+    
+    public static func == (lhs: StellarAssetId, rhs: StellarAssetId) -> Bool {
+        lhs.id == rhs.id
+    }
+    
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
     }
 }
 

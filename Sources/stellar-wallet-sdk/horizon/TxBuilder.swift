@@ -119,7 +119,7 @@ public class CommonTxBuilder {
         operations.append(op)
     }
 
-    func build() throws ->stellarsdk.Transaction
+    public func build() throws ->stellarsdk.Transaction
     {
         if(operations.count == 0) {
             throw ValidationError.invalidArgument(message: "minimum one operation is required to build the transaction")
@@ -157,7 +157,7 @@ public class TxBuilder:CommonTxBuilder {
     ///
     /// - Parameter memo: The memo to add to the transaction.
     ///
-    func setMemo(memo:stellarsdk.Memo) -> TxBuilder  {
+    public func setMemo(memo:stellarsdk.Memo) -> TxBuilder  {
         self.memo = memo
         return self
     }
@@ -167,7 +167,7 @@ public class TxBuilder:CommonTxBuilder {
     ///
     /// - Parameter timebounds: The timebounds to add to the transaction.
     ///
-    func setTimebounds(timebounds:stellarsdk.TimeBounds) -> TxBuilder  {
+    public func setTimebounds(timebounds:stellarsdk.TimeBounds) -> TxBuilder  {
         self.timebounds = timebounds
         return self
     }
@@ -177,7 +177,7 @@ public class TxBuilder:CommonTxBuilder {
     ///
     /// - Parameter baseFeeInStoops: The base fee in stoops (smallest stellar lumen units). Default is 100
     ///
-    func setBaseFee(baseFeeInStoops:UInt32) -> TxBuilder  {
+    public func setBaseFee(baseFeeInStoops:UInt32) -> TxBuilder  {
         self.baseFee = baseFeeInStoops
         return self
     }
@@ -208,7 +208,7 @@ public class TxBuilder:CommonTxBuilder {
     /// Lock the master key of the account (set its weight to 0). Use caution when locking account's
     /// master key. Make sure you have set the correct signers and weights. Otherwise, you might lock
     /// the account irreversibly.
-    func lockAccountMasterKey() -> TxBuilder {
+    public func lockAccountMasterKey() -> TxBuilder {
         super.lockAccountMasterKey()
         return self
     }
@@ -220,7 +220,7 @@ public class TxBuilder:CommonTxBuilder {
     ///   - signerAddress: Stellar address of the signer that is added
     ///   - signerWeight: Signer weight
     ///
-    func addAccountSigner(signerAddress:AccountKeyPair, signerWeight:UInt32) -> TxBuilder {
+    public func addAccountSigner(signerAddress:AccountKeyPair, signerWeight:UInt32) -> TxBuilder {
         super.addAccountSigner(signerAddress: signerAddress, signerWeight: signerWeight)
         return self
     }
@@ -232,7 +232,7 @@ public class TxBuilder:CommonTxBuilder {
     ///
     ///  - Parameter signerAddress: Stellar address of the signer to be  removed
     ///
-    func removeAccountSigner(signerAddress:AccountKeyPair) throws  -> TxBuilder {
+    public func removeAccountSigner(signerAddress:AccountKeyPair) throws  -> TxBuilder {
         try super.removeAccountSigner(signerAddress: signerAddress)
         return self
     }
@@ -243,7 +243,7 @@ public class TxBuilder:CommonTxBuilder {
     ///   - asset: The asset for which support is added.
     ///   - limit: Optional. The trust limit for the asset. If not set it defaults to max.
     ///
-    func addAssetSupport(asset:IssuedAssetId, limit:Decimal? = nil) -> TxBuilder {
+    public func addAssetSupport(asset:IssuedAssetId, limit:Decimal? = nil) -> TxBuilder {
         super.addAssetSupport(asset: asset, limit: limit)
         return self
     }
@@ -253,7 +253,7 @@ public class TxBuilder:CommonTxBuilder {
     ///
     /// - Parameter asset: The asset for which support is removed.
     ///
-    func removeAssetSupport(asset:IssuedAssetId)  -> TxBuilder {
+    public func removeAssetSupport(asset:IssuedAssetId)  -> TxBuilder {
         super.removeAssetSupport(asset: asset)
         return self
     }
@@ -269,7 +269,7 @@ public class TxBuilder:CommonTxBuilder {
     ///   - destinationAddress: The stellar account to merge into.
     ///   - sourceAddress: Account id of the account that is being merged. If not given then will default to the TxBuilder source account
     ///
-    func accountMerge(destinationAddress:String, sourceAddress:String? = nil) throws -> TxBuilder {
+    public func accountMerge(destinationAddress:String, sourceAddress:String? = nil) throws -> TxBuilder {
 
         do {
             let _ = try destinationAddress.decodeMuxedAccount()
@@ -302,7 +302,7 @@ public class TxBuilder:CommonTxBuilder {
     ///   - medium: The medium theshold level.
     ///   - high: The high theshold level.
     ///
-    func setThreshold(low:UInt32, medium:UInt32, high:UInt32) -> TxBuilder {
+    public func setThreshold(low:UInt32, medium:UInt32, high:UInt32) -> TxBuilder {
         super.setThreshold(low: low, medium: medium, high: high)
         return self
     }
@@ -517,7 +517,7 @@ public class TxBuilder:CommonTxBuilder {
 
 public class SponsoringBuilder:CommonTxBuilder {
 
-    var sponsorAccount:AccountKeyPair
+    public var sponsorAccount:AccountKeyPair
     
     public init(sourceAccount:TransactionAccount, sponsorAccount:AccountKeyPair) {
         self.sponsorAccount = sponsorAccount
@@ -542,7 +542,7 @@ public class SponsoringBuilder:CommonTxBuilder {
     /// Lock the master key of the account (set its weight to 0). Use caution when locking account's
     /// master key. Make sure you have set the correct signers and weights. Otherwise, you might lock
     /// the account irreversibly.
-    func lockAccountMasterKey() -> SponsoringBuilder {
+    public func lockAccountMasterKey() -> SponsoringBuilder {
         super.lockAccountMasterKey()
         return self
     }
@@ -554,7 +554,7 @@ public class SponsoringBuilder:CommonTxBuilder {
     ///   - signerAddress: Stellar address of the signer that is added
     ///   - signerWeight: Signer weight
     ///
-    func addAccountSigner(signerAddress:AccountKeyPair, signerWeight:UInt32) -> SponsoringBuilder {
+    public func addAccountSigner(signerAddress:AccountKeyPair, signerWeight:UInt32) -> SponsoringBuilder {
         super.addAccountSigner(signerAddress: signerAddress, signerWeight: signerWeight)
         return self
     }
@@ -566,7 +566,7 @@ public class SponsoringBuilder:CommonTxBuilder {
     ///
     ///  - Parameter signerAddress: Stellar address of the signer to be  removed
     ///
-    func removeAccountSigner(signerAddress:AccountKeyPair) throws  -> SponsoringBuilder {
+    public func removeAccountSigner(signerAddress:AccountKeyPair) throws  -> SponsoringBuilder {
         try super.removeAccountSigner(signerAddress: signerAddress)
         return self
     }
@@ -577,7 +577,7 @@ public class SponsoringBuilder:CommonTxBuilder {
     ///   - asset: The asset for which support is added.
     ///   - limit: Optional. The trust limit for the asset. If not set it defaults to max.
     ///
-    func addAssetSupport(asset:IssuedAssetId, limit:Decimal? = nil) -> SponsoringBuilder {
+    public func addAssetSupport(asset:IssuedAssetId, limit:Decimal? = nil) -> SponsoringBuilder {
         super.addAssetSupport(asset: asset, limit: limit)
         return self
     }
@@ -587,7 +587,7 @@ public class SponsoringBuilder:CommonTxBuilder {
     ///
     /// - Parameter asset: The asset for which support is removed.
     ///
-    func removeAssetSupport(asset:IssuedAssetId)  -> SponsoringBuilder {
+    public func removeAssetSupport(asset:IssuedAssetId)  -> SponsoringBuilder {
         super.removeAssetSupport(asset: asset)
         return self
     }
@@ -600,7 +600,7 @@ public class SponsoringBuilder:CommonTxBuilder {
     ///   - medium: The medium theshold level.
     ///   - high: The high theshold level.
     ///
-    func setThreshold(low:UInt32, medium:UInt32, high:UInt32) -> SponsoringBuilder {
+    public func setThreshold(low:UInt32, medium:UInt32, high:UInt32) -> SponsoringBuilder {
         super.setThreshold(low: low, medium: medium, high: high)
         return self
     }

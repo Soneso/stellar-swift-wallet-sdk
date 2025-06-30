@@ -20,7 +20,7 @@ public class Sep12 {
     ///   - serviceAddress: the serviceAddress from the server (KYC_SERVER or  TRANSFER_SERVER in stellar.toml).
     ///   - authToken: SEP-10 Authentication token for the request.
     ///
-    init(serviceAddress:String, authToken:AuthToken) {
+    internal init(serviceAddress:String, authToken:AuthToken) {
         self.authToken = authToken
         self.kycService = KycService(kycServiceAddress: serviceAddress)
     }

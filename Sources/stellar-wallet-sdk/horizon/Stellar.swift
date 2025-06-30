@@ -453,13 +453,13 @@ public class Stellar {
 }
 
 public class PaymentPath {
-    let sourceAmount:String
-    let sourceAsset:StellarAssetId
-    let destinationAmount: String
-    let destinationAsset: StellarAssetId
-    let path:[StellarAssetId]
+    public let sourceAmount:String
+    public let sourceAsset:StellarAssetId
+    public let destinationAmount: String
+    public let destinationAsset: StellarAssetId
+    public let path:[StellarAssetId]
     
-    init(sourceAmount: String,
+    public init(sourceAmount: String,
          sourceAsset:StellarAssetId,
          destinationAmount:String,
          destinationAsset: StellarAssetId,
@@ -472,7 +472,7 @@ public class PaymentPath {
         self.path = path
     }
     
-    static func fromPathResponse(response: stellarsdk.PaymentPathResponse) -> PaymentPath {
+    internal static func fromPathResponse(response: stellarsdk.PaymentPathResponse) -> PaymentPath {
         let sourceAsset = response.sourceAssetType == "native" ? NativeAssetId() : try! IssuedAssetId(code: response.sourceAssetCode!, issuer: response.sourceAssetIssuer!)
         let sourceAmount = response.sourceAmount
         let destinationAsset = response.destinationAssetType == "native" ? NativeAssetId() : try! IssuedAssetId(code: response.destinationAssetCode!, issuer: response.destinationAssetIssuer!)

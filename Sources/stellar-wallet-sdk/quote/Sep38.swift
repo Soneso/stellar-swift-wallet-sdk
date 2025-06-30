@@ -20,7 +20,7 @@ public class Sep38 {
     ///   - serviceAddress: the serviceAddress from the server (ANCHOR_QUOTE_SERVER in stellar.toml).
     ///   - authToken: SEP-10 Authentication token for the request. Optional, but required for [requestQuote] and [getQuote] methods (endpoints).
     ///
-    init(serviceAddress:String, authToken:AuthToken? = nil) {
+    internal init(serviceAddress:String, authToken:AuthToken? = nil) {
         self.authToken = authToken
         self.quoteService = QuoteService(serviceAddress: serviceAddress)
     }

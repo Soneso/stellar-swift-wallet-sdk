@@ -7,8 +7,8 @@
 
 import stellarsdk
 
-extension Transaction {
-    public func toEnvelopeXdrBase64() -> String? {
+public extension Transaction {
+    func toEnvelopeXdrBase64() -> String? {
         do {
             return try encodedEnvelope()
         } catch {

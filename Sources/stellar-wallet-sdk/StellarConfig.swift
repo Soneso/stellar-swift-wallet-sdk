@@ -33,17 +33,16 @@ public class StellarConfig {
     /// Creates a new instance of `StellarConfig` for the public (main) Stellar network.
     public static var publicNet:StellarConfig {
         return StellarConfig(network: Network.public, horizonUrl: StellarSDK.publicNetUrl)
-    };
+    }
     
     /// Creates a new instance of `StellarConfig` for the test Stellar network.
     public static var testNet:StellarConfig {
         return StellarConfig(network: Network.testnet, horizonUrl: StellarSDK.testNetUrl)
-    };
+    }
     
     /// Creates a new instance of `StellarConfig` for the futurenet Stellar network.
     public static var futureNet:StellarConfig {
         return StellarConfig(network: Network.futurenet, horizonUrl: StellarSDK.futureNetUrl)
-    };
-    
+    }
 }
 
