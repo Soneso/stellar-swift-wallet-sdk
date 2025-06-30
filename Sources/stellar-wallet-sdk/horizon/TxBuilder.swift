@@ -84,7 +84,7 @@ public class CommonTxBuilder {
         let op = ChangeTrustOperation(
             sourceAccountId: sourceAccount.keyPair.accountId,
             asset: asset,
-            limit: limit ?? Decimal(922337203685.4775807))
+            limit: limit)
         
         operations.append(op)
     }
