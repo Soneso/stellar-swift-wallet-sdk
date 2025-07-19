@@ -127,7 +127,7 @@ public class IssuedAssetId: StellarAssetId {
     
     public init(code:String, issuer:String) throws {
         let trimmedCode = code.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmedCode.count > 12 || trimmedCode.count < 0 {
+        if trimmedCode.count > 12 || trimmedCode.count <= 0 {
             throw ValidationError.invalidArgument(message: "invalid issued asset code: \(code)")
         }
         do {
