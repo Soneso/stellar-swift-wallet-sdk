@@ -441,7 +441,7 @@ public class Stellar {
             assetType = "credit_alphanum4"
             assetCode = asset.code
             assetIssuer = asset.issuer!.accountId
-        case AssetType.ASSET_TYPE_CREDIT_ALPHANUM4:
+        case AssetType.ASSET_TYPE_CREDIT_ALPHANUM12:
             assetType = "credit_alphanum12"
             assetCode = asset.code
             assetIssuer = asset.issuer!.accountId
