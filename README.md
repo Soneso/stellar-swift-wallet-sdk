@@ -135,3 +135,5 @@ Documentation can be found in the [docs](https://github.com/Soneso/stellar-swift
 
 We also recommend that you consult the code examples from the test cases, e.g. in the [Stellar Tests](https://github.com/Soneso/stellar-swift-wallet-sdk/blob/main/Tests/stellar-wallet-sdkTests/StellarTest.swift) of the SDK.
 
+## DeepWiki
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Soneso/stellar-swift-wallet-sdk)
