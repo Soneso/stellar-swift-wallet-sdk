@@ -135,5 +135,9 @@ Documentation can be found in the [docs](https://github.com/Soneso/stellar-swift
 
 We also recommend that you consult the code examples from the test cases, e.g. in the [Stellar Tests](https://github.com/Soneso/stellar-swift-wallet-sdk/blob/main/Tests/stellar-wallet-sdkTests/StellarTest.swift) of the SDK.
 
+## Example app
+
+[SwiftBasicPay](https://github.com/Soneso/SwiftBasicPay) is an open-source example iOS payment application that showcases how to integrate Stellar's powerful payment infrastructure into native Swift apps the using the Stellar Swift Wallet SDK and the classic iOS Stellar SDK.
+
 ## DeepWiki
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Soneso/stellar-swift-wallet-sdk)
