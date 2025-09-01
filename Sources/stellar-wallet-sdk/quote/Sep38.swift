@@ -145,6 +145,7 @@ public class Sep38 {
         }
         
         var request = Sep38PostQuoteRequest(context: context, sellAsset: sellAsset, buyAsset: buyAsset)
+        request.sellAmount = sellAmount
         request.buyAmount = buyAmount
         request.expireAfter = expireAfter
         request.sellDeliveryMethod = sellDeliveryMethod

@@ -10,7 +10,7 @@ import os
 @testable import stellar_wallet_sdk
 
 final class MVPDemoTest: XCTestCase {
-    let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "MVP Test")
+    let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "stellar-wallet-sdk-tests", category: "MVP Test")
     var depositSuccess = false
     
     func testMVPDemo() async throws {
