@@ -161,8 +161,8 @@ final class QuotesTest: XCTestCase {
                                                     sellAsset: sellAsset,
                                                     buyAsset: buyAsset,
                                                     buyAmount : "100",
-                                                    expireAfter : Date.now,
-                                                    sellDeliveryMethod : "PIX", 
+                                                    expireAfter : Date(),
+                                                    sellDeliveryMethod : "PIX",
                                                     countryCode : "BRA")
         XCTAssertEqual("de762cda-a193-4961-861e-57b31fed6eb3", response.id)
         XCTAssertEqual("5.42", response.totalPrice)
