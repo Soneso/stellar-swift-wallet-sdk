@@ -23,7 +23,7 @@ class DockerManager {
     private var dockerPath: String?
     private var dockerComposeCommand: [String] = []
     private var isDetectionComplete = false
-    private let detectionLock = NSLock()
+    private let detectionQueue = DispatchQueue(label: "com.stellar.dockermanager.detection")
     
     private init() {
         // Find docker-compose.test.yml in Tests directory
@@ -104,7 +104,11 @@ class DockerManager {
     /// Check if a service is healthy
     func isServiceHealthy(_ serviceName: String) async -> Bool {
         // Ensure detection is complete (will only run once)
-        if !isDetectionComplete {
+        var needsDetection = false
+        detectionQueue.sync {
+            needsDetection = !isDetectionComplete
+        }
+        if needsDetection {
             await detectDockerSetup()
         }
         
@@ -124,7 +128,11 @@ class DockerManager {
     /// Get logs for a service
     func getServiceLogs(_ serviceName: String, lines: Int = 100) async -> String {
         // Ensure detection is complete (will only run once)
-        if !isDetectionComplete {
+        var needsDetection = false
+        detectionQueue.sync {
+            needsDetection = !isDetectionComplete
+        }
+        if needsDetection {
             await detectDockerSetup()
         }
         
@@ -144,14 +152,29 @@ class DockerManager {
     
     /// Detect Docker installation and Docker Compose version
     private func detectDockerSetup() async {
-        // Use lock to ensure thread-safe detection
-        detectionLock.lock()
-        defer { detectionLock.unlock() }
-        
-        // Skip if already detected
-        if isDetectionComplete {
-            return
+        // Use async-safe synchronization
+        await withCheckedContinuation { continuation in
+            detectionQueue.sync {
+                // Skip if already detected
+                if isDetectionComplete {
+                    continuation.resume()
+                    return
+                }
+                
+                // Mark the start of async work
+                continuation.resume()
+            }
         }
+        
+        // Check again after acquiring synchronization
+        var shouldDetect = false
+        detectionQueue.sync {
+            if !isDetectionComplete {
+                shouldDetect = true
+            }
+        }
+        
+        guard shouldDetect else { return }
         
         // Try common Docker locations when running in Xcode
         let dockerPaths = [
@@ -174,7 +197,9 @@ class DockerManager {
         
         guard let dockerPath = dockerPath else {
             print("Docker not found in any common location")
-            isDetectionComplete = true
+            detectionQueue.sync {
+                isDetectionComplete = true
+            }
             return
         }
         
@@ -184,7 +209,9 @@ class DockerManager {
         if v2Result.exitCode == 0 {
             dockerComposeCommand = [dockerPath, "compose"]
             print("Using Docker Compose v2 (docker compose)")
-            isDetectionComplete = true
+            detectionQueue.sync {
+                isDetectionComplete = true
+            }
             return
         }
         
@@ -201,13 +228,17 @@ class DockerManager {
             if result.exitCode == 0 {
                 dockerComposeCommand = [composePath]
                 print("Using Docker Compose v1 at: \(composePath)")
-                isDetectionComplete = true
+                detectionQueue.sync {
+                    isDetectionComplete = true
+                }
                 return
             }
         }
         
         print("Warning: Docker Compose not found. Integration tests may fail.")
-        isDetectionComplete = true
+        detectionQueue.sync {
+            isDetectionComplete = true
+        }
     }
     
     /// Run a command using the detected Docker setup

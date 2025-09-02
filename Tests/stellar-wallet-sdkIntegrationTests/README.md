@@ -47,10 +47,26 @@ stellar-wallet-sdkIntegrationTests/
 
 ## Docker Services
 
-The `docker-compose.test.yml` file provides:
+The `Tests/docker-compose.test.yml` file provides:
 - 2 PostgreSQL databases (ports 5432, 5433)
 - 2 Recovery signer services (ports 8000, 8002)
 - 2 Web authentication services (ports 8001, 8003)
+
+### Finding docker on your mac
+
+`DockerManager.swift` tries to find the docker binary on your mac by searching different locations:
+
+```swift
+let dockerPaths = [
+    "/opt/homebrew/bin/docker",  // Apple Silicon Macs with Homebrew
+    "/usr/local/bin/docker",      // Intel Macs with Homebrew
+    "/usr/bin/docker",             // System location
+    "/Applications/Docker.app/Contents/Resources/bin/docker", // Docker Desktop
+    "docker"                       // Fallback to PATH
+]
+`
+
+If your docker binary can not be found, docker dependent integration tests will not run. Consider extending `DockerManager.swift` in this case.
 
 ## Test Categories
 
