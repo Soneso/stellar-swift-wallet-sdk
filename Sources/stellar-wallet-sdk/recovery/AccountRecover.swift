@@ -159,6 +159,10 @@ public class AccountRecover {
                 }
                 return DecoratedSignatureXDR(hint: WrappedData4(hint), signature: signatureData)
             case .failure(let error):
+                print("Service address: \(server.endpoint)")
+                print("Account address: \(accountAddress)")
+                print("Signing address: \(serverAuthVal.signerAddress)")
+                print("Err: \(error)")
                 throw error
             }
         } else {

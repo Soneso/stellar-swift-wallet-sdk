@@ -20,6 +20,10 @@ class DockerManager {
     private let dockerComposePath: String
     private let projectName = "stellar-wallet-test"
     private var isRunning = false
+    private var dockerPath: String?
+    private var dockerComposeCommand: [String] = []
+    private var isDetectionComplete = false
+    private let detectionLock = NSLock()
     
     private init() {
         // Find docker-compose.test.yml in Tests directory
@@ -38,8 +42,11 @@ class DockerManager {
         
         print("Starting Docker services...")
         
+        // Ensure Docker setup is detected
+        await detectDockerSetup()
+        
         // Check if Docker is installed
-        guard await isDockerInstalled() else {
+        guard dockerPath != nil && !dockerComposeCommand.isEmpty else {
             throw DockerError.dockerNotInstalled
         }
         
@@ -48,16 +55,16 @@ class DockerManager {
             throw DockerError.composeFileNotFound(dockerComposePath)
         }
         
-        // Start services - use docker compose (v2) instead of docker-compose
-        let result = await runCommand(
-            "docker",
-            arguments: [
-                "compose",
-                "-f", dockerComposePath,
-                "-p", projectName,
-                "up", "-d"
-            ]
-        )
+        // Build the complete command arguments
+        var arguments = dockerComposeCommand
+        arguments.append(contentsOf: [
+            "-f", dockerComposePath,
+            "-p", projectName,
+            "up", "-d"
+        ])
+        
+        // Start services using the detected Docker setup
+        let result = await runCommandDirect(arguments)
         
         guard result.exitCode == 0 else {
             throw DockerError.startFailed(result.error)
@@ -76,15 +83,15 @@ class DockerManager {
         
         print("Stopping Docker services...")
         
-        let result = await runCommand(
-            "docker",
-            arguments: [
-                "compose",
-                "-f", dockerComposePath,
-                "-p", projectName,
-                "down"
-            ]
-        )
+        // No need to detect again if already running
+        var arguments = dockerComposeCommand
+        arguments.append(contentsOf: [
+            "-f", dockerComposePath,
+            "-p", projectName,
+            "down"
+        ])
+        
+        let result = await runCommandDirect(arguments)
         
         guard result.exitCode == 0 else {
             throw DockerError.stopFailed(result.error)
@@ -96,54 +103,123 @@ class DockerManager {
     
     /// Check if a service is healthy
     func isServiceHealthy(_ serviceName: String) async -> Bool {
-        let result = await runCommand(
-            "docker",
-            arguments: [
-                "compose",
-                "-f", dockerComposePath,
-                "-p", projectName,
-                "ps", serviceName
-            ]
-        )
+        // Ensure detection is complete (will only run once)
+        if !isDetectionComplete {
+            await detectDockerSetup()
+        }
         
-        // Check if service is running - Docker Compose v2 uses "running" status
-        return result.exitCode == 0 && (result.output.contains("running") || result.output.contains("healthy"))
+        var arguments = dockerComposeCommand
+        arguments.append(contentsOf: [
+            "-f", dockerComposePath,
+            "-p", projectName,
+            "ps", serviceName
+        ])
+        
+        let result = await runCommandDirect(arguments)
+        
+        // Check if service is running - Works with both v1 and v2
+        return result.exitCode == 0 && (result.output.contains("running") || result.output.contains("healthy") || result.output.contains("Up"))
     }
     
     /// Get logs for a service
     func getServiceLogs(_ serviceName: String, lines: Int = 100) async -> String {
-        let result = await runCommand(
-            "docker",
-            arguments: [
-                "compose",
-                "-f", dockerComposePath,
-                "-p", projectName,
-                "logs", "--tail", "\(lines)", serviceName
-            ]
-        )
+        // Ensure detection is complete (will only run once)
+        if !isDetectionComplete {
+            await detectDockerSetup()
+        }
+        
+        var arguments = dockerComposeCommand
+        arguments.append(contentsOf: [
+            "-f", dockerComposePath,
+            "-p", projectName,
+            "logs", "--tail", "\(lines)", serviceName
+        ])
+        
+        let result = await runCommandDirect(arguments)
         
         return result.output
     }
     
     // MARK: - Private Methods
     
-    private func isDockerInstalled() async -> Bool {
+    /// Detect Docker installation and Docker Compose version
+    private func detectDockerSetup() async {
+        // Use lock to ensure thread-safe detection
+        detectionLock.lock()
+        defer { detectionLock.unlock() }
+        
+        // Skip if already detected
+        if isDetectionComplete {
+            return
+        }
+        
         // Try common Docker locations when running in Xcode
         let dockerPaths = [
-            "/usr/local/bin/docker",
-            "/opt/homebrew/bin/docker",
-            "/usr/bin/docker",
-            "docker" // fallback to PATH
+            "/opt/homebrew/bin/docker",  // Apple Silicon Macs with Homebrew
+            "/usr/local/bin/docker",      // Intel Macs with Homebrew
+            "/usr/bin/docker",             // System location
+            "/Applications/Docker.app/Contents/Resources/bin/docker", // Docker Desktop
+            "docker"                       // Fallback to PATH
         ]
         
-        for dockerPath in dockerPaths {
-            let result = await runCommandWithPath(dockerPath, arguments: ["--version"])
+        // Find Docker binary
+        for path in dockerPaths {
+            let result = await runCommandWithPath(path, arguments: ["--version"])
             if result.exitCode == 0 {
-                return true
+                dockerPath = path
+                print("Found Docker at: \(path)")
+                break
             }
         }
         
-        return false
+        guard let dockerPath = dockerPath else {
+            print("Docker not found in any common location")
+            isDetectionComplete = true
+            return
+        }
+        
+        // Detect Docker Compose version
+        // Try Docker Compose v2 first (docker compose)
+        let v2Result = await runCommandWithPath(dockerPath, arguments: ["compose", "version"])
+        if v2Result.exitCode == 0 {
+            dockerComposeCommand = [dockerPath, "compose"]
+            print("Using Docker Compose v2 (docker compose)")
+            isDetectionComplete = true
+            return
+        }
+        
+        // Try Docker Compose v1 (docker-compose)
+        let composeV1Paths = [
+            "/opt/homebrew/bin/docker-compose",
+            "/usr/local/bin/docker-compose",
+            "/usr/bin/docker-compose",
+            "docker-compose"
+        ]
+        
+        for composePath in composeV1Paths {
+            let result = await runCommandWithPath(composePath, arguments: ["--version"])
+            if result.exitCode == 0 {
+                dockerComposeCommand = [composePath]
+                print("Using Docker Compose v1 at: \(composePath)")
+                isDetectionComplete = true
+                return
+            }
+        }
+        
+        print("Warning: Docker Compose not found. Integration tests may fail.")
+        isDetectionComplete = true
+    }
+    
+    /// Run a command using the detected Docker setup
+    private func runCommandDirect(_ arguments: [String]) async -> (output: String, error: String, exitCode: Int32) {
+        guard !arguments.isEmpty else {
+            return ("", "No command provided", -1)
+        }
+        
+        let command = arguments[0]
+        let commandArgs = Array(arguments.dropFirst())
+        
+        return await runCommandWithPath(command, arguments: commandArgs)
     }
     
     private func runCommandWithPath(_ command: String, arguments: [String]) async -> (output: String, error: String, exitCode: Int32) {
@@ -200,15 +276,14 @@ class DockerManager {
                 }
                 
                 // Check if service exists and is running
-                let psResult = await runCommand(
-                    "docker",
-                    arguments: [
-                        "compose",
-                        "-f", dockerComposePath,
-                        "-p", projectName,
-                        "ps", service
-                    ]
-                )
+                var arguments = dockerComposeCommand
+                arguments.append(contentsOf: [
+                    "-f", dockerComposePath,
+                    "-p", projectName,
+                    "ps", service
+                ])
+                
+                let psResult = await runCommandDirect(arguments)
                 
                 if psResult.exitCode != 0 {
                     throw DockerError.serviceNotFound(service)
@@ -224,16 +299,6 @@ class DockerManager {
         }
     }
     
-    private func runCommand(_ command: String, arguments: [String]) async -> (output: String, error: String, exitCode: Int32) {
-        // Always use full path for docker to avoid PATH issues in Xcode
-        var actualCommand = command
-        if command == "docker" {
-            // Docker is installed at /usr/local/bin/docker
-            actualCommand = "/usr/local/bin/docker"
-        }
-        
-        return await runCommandWithPath(actualCommand, arguments: arguments)
-    }
 }
 #endif // End of macOS-only DockerManager
 
