@@ -95,7 +95,7 @@ services:
       POSTGRES_PASSWORD: pg_password
       POSTGRES_DB: pg_database2
     ports:
-      - "5433:5433"
+      - "5433:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s

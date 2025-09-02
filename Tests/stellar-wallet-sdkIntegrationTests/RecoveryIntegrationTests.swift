@@ -149,12 +149,15 @@ final class RecoveryIntegrationTests: IntegrationTestCase {
             auth: authMap
         )
         
-        if let accountInfo = accountInfoMap[server1Key] {
-            XCTAssertEqual(accountInfo.address.address, accountKp.address)
-            XCTAssertEqual(accountInfo.identities[0].role, RecoveryRole.owner)
-            XCTAssertEqual(accountInfo.signers.count, 1)
-            print("Account info retrieved successfully")
+        guard let accountInfo = accountInfoMap[server1Key] else {
+            XCTFail("Error retrieving account info from server \(server1Key)")
+            return
         }
+        
+        XCTAssertEqual(accountInfo.address.address, accountKp.address)
+        XCTAssertEqual(accountInfo.identities[0].role, RecoveryRole.owner)
+        XCTAssertEqual(accountInfo.signers.count, 1)
+        print("Account info retrieved successfully")
         
         // Recover wallet - replace device key
         let sep10Server2 = try await recovery.sep10Auth(key: server2Key)
@@ -170,8 +173,11 @@ final class RecoveryIntegrationTests: IntegrationTestCase {
         print("New device key created: \(newDeviceKp.address)")
         
         // Get recovery signer addresses
-        let recoverySignerAddress1 = recoverableWallet.signers[0]
-        let recoverySignerAddress2 = recoverableWallet.signers[1]
+        let recoverySignerAddress1 = accountInfo.signers[0].key.address
+        guard let recoverySignerAddress2 = recoverableWallet.signers.filter({$0 !=  recoverySignerAddress1}).first else {
+            XCTFail("Error retrieving signer addresses from server \(server2Key)")
+            return
+        }
         
         // Create signer auth map
         let signerAuthMap: [RecoveryServerKey: RecoveryServerSigning] = [
