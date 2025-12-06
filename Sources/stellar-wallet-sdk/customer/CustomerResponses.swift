@@ -54,9 +54,7 @@ public class Field {
         if let choices = field.choices {
             self.choices = []
             for choice in choices {
-                if choice is String {
-                    self.choices!.append(choice as! String)
-                }
+                self.choices!.append(choice)
             }
         }
         self.optional = field.optional
@@ -77,9 +75,7 @@ public class ProvidedField {
         if let choices = field.choices {
             self.choices = []
             for choice in choices {
-                if choice is String {
-                    self.choices!.append(choice as! String)
-                }
+                self.choices!.append(choice)
             }
         }
         self.optional = field.optional

@@ -350,13 +350,13 @@ final class StellarTest: XCTestCase {
         for balance in balances {
             if (balance.assetCode == assetCode) {
                 XCTAssertEqual(balance.assetIssuer, assetIssuerAccountId)
-                XCTAssertEqual(100, Double(balance.limit))
+                XCTAssertEqual(100, Double(balance.limit!))
                 trustlineFound = true
                 break
             }
         }
         XCTAssertTrue(trustlineFound)
-        
+
         // create transaction (remove trustline)
         tx = try await stellar.transaction(sourceAddress:accountKeyPair)
             .removeAssetSupport(asset: asset)
@@ -431,13 +431,13 @@ final class StellarTest: XCTestCase {
         for balance in balances {
             if (balance.assetCode == assetCode) {
                 XCTAssertEqual(balance.assetIssuer, assetIssuerAccountId)
-                XCTAssertEqual(100, Double(balance.limit))
+                XCTAssertEqual(100, Double(balance.limit!))
                 trustlineFound = true
                 break
             }
         }
         XCTAssertTrue(trustlineFound)
-        
+
         // create sponsored transaction (remove trustline)
         tx = try txBuilder.sponsoring(sponsorAccount: sponsorKeyPair,
                                       buildingFunction: { (builder) in builder.removeAssetSupport(asset: asset)},

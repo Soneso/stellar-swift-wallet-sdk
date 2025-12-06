@@ -77,13 +77,13 @@ public class SigningKeyPair:AccountKeyPair{
     /// - Parameter keyPair: The `stellarsdk.KeyPair` to initialize from.
     ///
     public init(keyPair: stellarsdk.KeyPair) throws {
-        self.keyPair = keyPair
-        if (keyPair.seed == nil) {
+        guard let secretSeed = keyPair.secretSeed else {
             throw ValidationError.invalidArgument(message: "This keypair doesn't have a private key and can't sign")
         }
+        self.keyPair = keyPair
         self.address = keyPair.accountId
         self.publicKey = keyPair.publicKey
-        self.secretKey = keyPair.secretSeed
+        self.secretKey = secretSeed
     }
     
     /// Initializes from a stellar secret seed (encoded String representation of the private key)

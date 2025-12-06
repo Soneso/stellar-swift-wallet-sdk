@@ -6,8 +6,8 @@ import PackageDescription
 let package = Package(
     name: "stellar-wallet-sdk",
     platforms: [
-        .macOS(.v10_15),
-        .iOS(.v13),
+        .macOS(.v12),
+        .iOS(.v15),
     ],
     products: [
         // Products define the executables and libraries a package produces, making them visible to other packages.
@@ -17,7 +17,7 @@ let package = Package(
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
-        .package(url: "https://github.com/Soneso/stellar-ios-mac-sdk", .upToNextMajor(from: "3.2.4")),
+        .package(url: "https://github.com/Soneso/stellar-ios-mac-sdk", .upToNextMajor(from: "3.4.0")),
         //.package(url: "https://github.com/Soneso/stellar-ios-mac-sdk", .revision("65b19d48990792cbcc7ff362a5c93ca8d7e5a1a1")),
         //.package(path: "../stellar-ios-mac-sdk") // if it is not updateing, you can use fix_spm_cache.sh
     ],
