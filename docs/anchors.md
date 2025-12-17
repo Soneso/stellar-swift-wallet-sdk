@@ -230,7 +230,7 @@ keypair and send it back as a result. As mentioned before, this sample implement
 against unauthorized requests, so you must add authorization checks as part of the request.
 
 An example client implementation can be found in the [AuthTest](https://github.com/Soneso/stellar-swift-wallet-sdk/blob/main/Tests/stellar-wallet-sdkTests/AuthTest.swift). 
-The test uses an example server implementation that can be found [here](https://replit.com/@crogobete/ClientDomainSigner#main.py).
+The test uses an example server implementation that can be found [here](https://github.com/Soneso/go-server-signer).
 
 
 ## Next

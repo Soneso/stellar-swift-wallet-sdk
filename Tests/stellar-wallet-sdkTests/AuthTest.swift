@@ -120,11 +120,12 @@ final class AuthTest: XCTestCase {
         let anchor = wallet.anchor(homeDomain: "testanchor.stellar.org")
         let authKey = SigningKeyPair.random
         
-        // Client domain signer src: https://replit.com/@crogobete/ClientDomainSigner#main.py
+        // Client domain signer src: https://github.com/Soneso/go-server-signer
         
-        let clientDomain = "client-domain-signer.replit.app"
-        let clientDomainSigner = try DomainSigner(url: "https://\(clientDomain)/sign" , 
-                                                  requestHeaders: ["Authorization" : "Bearer 123456789"])
+        let clientDomain = "testsigner.stellargate.com"
+        let clientDomainSigner = try DomainSigner(url: "https://\(clientDomain)/sign-sep-10" ,
+                                                  requestHeaders: ["Authorization" :
+                                                                    "Bearer 7b23fe8428e7fb9b3335ed36c39fb5649d3cd7361af8bf88c2554d62e8ca3017"])
         do {
             let sep10 = try await anchor.sep10
             let authToken = try await sep10.authenticate(userKeyPair: authKey,

@@ -707,7 +707,7 @@ final class StellarTest: XCTestCase {
         let stellar = wallet.stellar
         let account = stellar.account
         
-        let sponsorKeyPair = try PublicKeyPair(accountId: "GBUTDNISXHXBMZE5I4U5INJTY376S5EW2AF4SQA2SWBXUXJY3OIZQHMV")
+        let sponsorKeyPair = try PublicKeyPair(accountId: "GBWW7NMWWIKPDEWZZKTTCSUGV2ZMVN23IZ5JFOZ4FWZBNVQNHMU47HOR")
         
         // prevent error in case of testnet reset
         if !(try await account.accountExists(accountAddress: sponsorKeyPair.address)) {
@@ -755,8 +755,9 @@ final class StellarTest: XCTestCase {
     }
     
     private func sendTransactionToBackend(xdr:String) async throws -> String {
-        let serverSigner = try DomainSigner(url: "https://server-signer.replit.app/sign",
-                                        requestHeaders: ["Authorization": "Bearer 987654321"]);
+        // Remote signer source code: https://github.com/Soneso/go-server-signer
+        let serverSigner = try DomainSigner(url: "https://testsigner.stellargate.com/sign-sep-10",
+                                        requestHeaders: ["Authorization": "Bearer 7b23fe8428e7fb9b3335ed36c39fb5649d3cd7361af8bf88c2554d62e8ca3017"]);
         return try await serverSigner.signWithDomainAccount(transactionXdr: xdr,
                                                             networkPassphrase: "Test SDF Network ; September 2015")
     }
