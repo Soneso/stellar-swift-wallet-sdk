@@ -20,10 +20,13 @@ public class RecoverableIdentity {
     }
     
     internal convenience init(response: SEP30ResponseIdentity) throws {
-        guard let role = RecoveryRole(rawValue: response.role) else {
-            throw RecoveryServiceError.parsingResponseFailed(message: "unknown role received in response: \(response.role)")
+        guard let roleRaw = response.role else {
+            throw RecoveryServiceError.parsingResponseFailed(message: "missing role in response")
         }
-        
+        guard let role = RecoveryRole(rawValue: roleRaw) else {
+            throw RecoveryServiceError.parsingResponseFailed(message: "unknown role received in response: \(roleRaw)")
+        }
+
         self.init(role: role, authenticated: response.authenticated)
     }
 }

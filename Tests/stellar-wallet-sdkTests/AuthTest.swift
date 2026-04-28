@@ -677,7 +677,7 @@ class AuthTestWebAuthSendChallengeResponseMock: ResponsesMock {
                     for operationXDR in transactionEnvelope.txOperations {
                         let operationBodyXDR = operationXDR.body
                         switch operationBodyXDR {
-                        case .manageData(let manageDataOperation):
+                        case .manageDataOp(let manageDataOperation):
                             if (manageDataOperation.dataName == "client_domain") {
                                 needsClientSignature = true
                             }
