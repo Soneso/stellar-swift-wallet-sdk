@@ -39,7 +39,7 @@ final class KYCTest: XCTestCase {
 
     override func setUp() {
         super.setUp()
-                
+        ServerMock.removeAll()
         URLProtocol.registerClass(ServerMock.self)
         anchorTomlServerMock = TomlResponseMock(host: KYCTestUtils.anchorDomain,
                                                 serverSigningKey: KYCTestUtils.serverAccountId,
@@ -56,7 +56,12 @@ final class KYCTest: XCTestCase {
         deleteCustomerServerMock = DeleteCustomerResponseMock(host: KYCTestUtils.apiHost)
 
     }
-    
+
+    override func tearDown() {
+        ServerMock.removeAll()
+        super.tearDown()
+    }
+
     func testAll() async throws {
         let anchor = wallet.anchor(homeDomain: QuotesTestUtils.anchorDomain)
         let sep10 = try await anchor.sep10

@@ -26,15 +26,21 @@ final class UriTest: XCTestCase {
     var signerKeyPair : SigningKeyPair!
     
     override func setUp() {
+        super.setUp()
+        ServerMock.removeAll()
         URLProtocol.registerClass(ServerMock.self)
-        
-        
+
         signerKeyPair  = try! SigningKeyPair(secretKey: "SBA2XQ5SRUW5H3FUQARMC6QYEPUYNSVCMM4PGESGVB2UIFHLM73TPXXF")
         anchorTomlServerMock = TomlResponseMock(host: "place.domain.com",
                                                 serverSigningKey: "GBWMCCC3NHSKLAOJDBKKYW7SSH2PFTTNVFKWSGLWGDLEBKLOVP5JLBBP",
                                                 uriRequestSigningKey: signerKeyPair.address) // "GDGUF4SCNINRDCRUIVOMDYGIMXOWVP3ZLMTL2OGQIWMFDDSECZSFQMQV"
     }
-    
+
+    override func tearDown() {
+        ServerMock.removeAll()
+        super.tearDown()
+    }
+
     func testAll() async throws {
         try await sep7TxTest()
         try sep7PayTest()

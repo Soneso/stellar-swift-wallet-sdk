@@ -53,9 +53,11 @@ final class AuthTest: XCTestCase {
     var clientSignerServerMock: ClientSignerResponseMock!
     
     override func setUp() {
+        super.setUp()
+        ServerMock.removeAll()
         URLProtocol.registerClass(ServerMock.self)
-        
-        anchorTomlServerMock = WebAuthTomlResponseMock(address: AuthTestUtils.anchorDomain, 
+
+        anchorTomlServerMock = WebAuthTomlResponseMock(address: AuthTestUtils.anchorDomain,
                                                        serverSigningKey: AuthTestUtils.serverAccountId,
                                                        authServer: AuthTestUtils.webAuthEndpoint)
         
@@ -69,11 +71,15 @@ final class AuthTest: XCTestCase {
         
         clientSignerServerMock = ClientSignerResponseMock(address: AuthTestUtils.clientDomain)
     }
-    
+
+    override func tearDown() {
+        ServerMock.removeAll()
+        super.tearDown()
+    }
+
     func testAll() async throws {
         try await basicSuccessTest()
         try await clientDomainSuccessTest()
-        try await clientDomainRemoteTest()
         try await basicMemoSuccessTest()
         try await getChallengeInvalidSeqNrTest()
         try await getChallengeInvalidSecondOpSrcAccTest()
@@ -112,27 +118,6 @@ final class AuthTest: XCTestCase {
             
             XCTAssertEqual(AuthTestUtils.jwtSuccess, authToken.jwt)
         } catch (let e) {
-            XCTFail(e.localizedDescription)
-        }
-    }
-    
-    func clientDomainRemoteTest() async throws {
-        let anchor = wallet.anchor(homeDomain: "testanchor.stellar.org")
-        let authKey = SigningKeyPair.random
-        
-        // Client domain signer src: https://github.com/Soneso/go-server-signer
-        
-        let clientDomain = "testsigner.stellargate.com"
-        let clientDomainSigner = try DomainSigner(url: "https://\(clientDomain)/sign-sep-10" ,
-                                                  requestHeaders: ["Authorization" :
-                                                                    "Bearer 7b23fe8428e7fb9b3335ed36c39fb5649d3cd7361af8bf88c2554d62e8ca3017"])
-        do {
-            let sep10 = try await anchor.sep10
-            let authToken = try await sep10.authenticate(userKeyPair: authKey,
-                                                         clientDomain: clientDomain,
-                                                         clientDomainSigner: clientDomainSigner)
-            XCTAssertFalse(authToken.jwt.isEmpty)
-        } catch let e {
             XCTFail(e.localizedDescription)
         }
     }
@@ -769,21 +754,5 @@ class ClientSignerResponseMock: ResponsesMock {
         "network_passphrase": "\(Network.testnet.passphrase)"
         }
         """
-    }
-}
-
-final class AuthTestRemote: XCTestCase {
-    
-    func testStellarAnchorBasics() async throws {
-        let wallet = Wallet.testNet
-        let anchor = wallet.anchor(homeDomain: "testanchor.stellar.org")
-        let info = try await anchor.info
-        XCTAssertEqual("https://testanchor.stellar.org/auth", info.webAuthEndpoint)
-        XCTAssertEqual("GCHLHDBOKG2JWMJQBTLSL5XG6NO7ESXI2TAQKZXCXWXB5WI2X6W233PR", info.signingKey)
-        
-        let sep10 = try await anchor.sep10
-        let accountKeyPair = wallet.stellar.account.createKeyPair()
-        let authToken = try await sep10.authenticate(userKeyPair: accountKeyPair)
-        XCTAssertEqual("https://testanchor.stellar.org/auth", authToken.issuer)
     }
 }

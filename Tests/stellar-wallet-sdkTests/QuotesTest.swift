@@ -38,7 +38,7 @@ final class QuotesTest: XCTestCase {
     
     override func setUp() {
         super.setUp()
-                
+        ServerMock.removeAll()
         URLProtocol.registerClass(ServerMock.self)
         anchorTomlServerMock = TomlResponseMock(host: QuotesTestUtils.anchorDomain,
                                                        serverSigningKey: QuotesTestUtils.serverAccountId,
@@ -56,7 +56,12 @@ final class QuotesTest: XCTestCase {
         sep38GetQuoteMock = Sep38GetQuoteResponseMock(host: QuotesTestUtils.apiHost)
 
     }
-    
+
+    override func tearDown() {
+        ServerMock.removeAll()
+        super.tearDown()
+    }
+
     func testAll() async throws {
         let anchor = wallet.anchor(homeDomain: QuotesTestUtils.anchorDomain)
         let sep10 = try await anchor.sep10

@@ -12,10 +12,6 @@ class ResponsesMock {
         ServerMock.add(mock: requestMock())
     }
 
-    deinit {
-        ServerMock.removeAll()
-    }
-    
     /// override this
     func requestMock() -> RequestMock {
         

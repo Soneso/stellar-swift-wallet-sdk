@@ -44,8 +44,10 @@ final class InteractiveFlowTest: XCTestCase {
     var multipeTxServerMock:InteractiveMultipleTxResponseMock!
 
     override func setUp() {
+        super.setUp()
+        ServerMock.removeAll()
         URLProtocol.registerClass(ServerMock.self)
-        
+
         anchorTomlServerMock = TomlResponseMock(host: InteractiveFlowTestUtils.anchorHost,
                                                        serverSigningKey: InteractiveFlowTestUtils.serverAccountId,
                                                        authServer: InteractiveFlowTestUtils.webAuthEndpoint,
@@ -61,7 +63,12 @@ final class InteractiveFlowTest: XCTestCase {
         singleTxServerMock = InteractiveSingleTxResponseMock(host: InteractiveFlowTestUtils.anchorInteractiveHost)
         multipeTxServerMock = InteractiveMultipleTxResponseMock(host: InteractiveFlowTestUtils.anchorInteractiveHost)
     }
-    
+
+    override func tearDown() {
+        ServerMock.removeAll()
+        super.tearDown()
+    }
+
     func testAll() async throws {
         try await infoTest()
         try await depositTest()

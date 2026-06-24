@@ -83,8 +83,10 @@ final class RecoveryTest: XCTestCase {
     var server2RecoverMock:RecoveryRecoverServerMock!
     
     override func setUp() {
+        super.setUp()
+        ServerMock.removeAll()
         URLProtocol.registerClass(ServerMock.self)
-        
+
         accountKp = try! SigningKeyPair(keyPair: RecoveryTestUtils.userKeypair)
         deviceKp = wallet.stellar.account.createKeyPair()
         recoveryKp = wallet.stellar.account.createKeyPair()
@@ -141,9 +143,14 @@ final class RecoveryTest: XCTestCase {
         server2DetailsServerMock = RecoveryDetailsServerMock(host: RecoveryTestUtils.server2HomeDomain, accountId: accountKp.address)
         server1RecoverMock = RecoveryRecoverServerMock(host: RecoveryTestUtils.server1HomeDomain, accountId: accountKp.address, signingAddress: RecoveryTestUtils.server1Keypair.accountId)
         server2RecoverMock = RecoveryRecoverServerMock(host: RecoveryTestUtils.server2HomeDomain, accountId: accountKp.address, signingAddress: RecoveryTestUtils.server2Keypair.accountId)
-        
+
     }
-    
+
+    override func tearDown() {
+        ServerMock.removeAll()
+        super.tearDown()
+    }
+
     func testAll() async throws {
         try await registerTest()
         try await registerWithSponsorAndNotExistingAccountTest()

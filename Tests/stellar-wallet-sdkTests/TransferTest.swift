@@ -46,8 +46,10 @@ final class TransferTest: XCTestCase {
     var multipeTxServerMock:Sep6MultipleTxResponseMock!
     
     override func setUp() {
+        super.setUp()
+        ServerMock.removeAll()
         URLProtocol.registerClass(ServerMock.self)
-        
+
         anchorTomlServerMock = TomlResponseMock(host: TransferTestUtils.anchorHost,
                                                        serverSigningKey: TransferTestUtils.serverAccountId,
                                                        authServer: TransferTestUtils.webAuthEndpoint,
@@ -66,7 +68,12 @@ final class TransferTest: XCTestCase {
         singleTxServerMock = Sep6SingleTxResponseMock(host: TransferTestUtils.anchorTransferHost)
         multipeTxServerMock = Sep6MultipleTxResponseMock(host: TransferTestUtils.anchorTransferHost)
     }
-    
+
+    override func tearDown() {
+        ServerMock.removeAll()
+        super.tearDown()
+    }
+
     func testAll() async throws {
         try await infoTest()
         try await depositBankPaymentTest()
