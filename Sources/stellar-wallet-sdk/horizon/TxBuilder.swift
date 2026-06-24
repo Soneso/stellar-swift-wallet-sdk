@@ -434,9 +434,12 @@ public class TxBuilder:CommonTxBuilder {
             }
         }
         
+        // The default sendMax is the maximum Stellar amount (Int64.max stroops).
+        // It must be built from a string: the Double literal 922337203685.4775807
+        // rounds up to ...5808, which overflows Int64 when converted to stroops.
         let op = try! PathPaymentStrictReceiveOperation(sourceAccountId: sourceAccount.keyPair.accountId,
                                                         sendAsset: sendAssetId.toAsset(),
-                                                        sendMax: sendMaxAmount ?? Decimal(922337203685.4775807),
+                                                        sendMax: sendMaxAmount ?? Decimal(string: "922337203685.4775807")!,
                                                         destinationAccountId: destinationAddress,
                                                         destAsset: destinationAssetId.toAsset(),
                                                         destAmount: destinationAmount,

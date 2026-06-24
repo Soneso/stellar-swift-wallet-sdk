@@ -196,7 +196,11 @@ public class Sep6Transaction:AnchorTransaction {
     }
     
     internal convenience init(tx:stellarsdk.AnchorTransaction) throws {
-        
+
+        // Note: a SEP-6 transaction whose `status` or `kind` is unknown to the
+        // underlying iOS SDK currently crashes while decoding the anchor response
+        // (the SDK force-unwraps the enum rawValue), so the guard below only guards
+        // against values this wallet SDK does not yet map. See plans/todo.md.
         var requiredInfoUpdates:[String : Sep6FieldInfo]? = nil
         if let fields = tx.requiredInfoUpdates?.fields {
             requiredInfoUpdates = [:]

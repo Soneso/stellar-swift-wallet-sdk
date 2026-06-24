@@ -63,3 +63,6 @@ fastlane/test_output
 
 # Claude Code
 .claude/
+
+# Local planning notes
+plans/
