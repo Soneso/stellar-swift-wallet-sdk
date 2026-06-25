@@ -164,7 +164,7 @@ try await wallet.stellar.submitTransaction(signedTransaction: signedReplaceKeyTx
 ```
 
 ## Further readings
-The [recovery test cases](https://github.com/Soneso/stellar-swift-wallet-sdk/blob/main/Tests/stellar-wallet-sdkTests/RecoveryTest.swift) contain many examples that can be used to learn more about the recovery service.
+The [recovery test cases](https://github.com/Soneso/stellar-swift-wallet-sdk/blob/main/Tests/stellar-wallet-sdkUnitTests/RecoveryTest.swift) contain many examples that can be used to learn more about the recovery service.
 
 ## Next
 

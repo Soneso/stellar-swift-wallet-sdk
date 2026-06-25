@@ -1,5 +1,5 @@
 //
-//  StellarUnitTests.swift
+//  StellarTest.swift
 //
 //
 //  Offline, fully mocked unit tests for the Horizon layer of the wallet SDK:
@@ -16,7 +16,7 @@ import Foundation
 import stellarsdk
 @testable import stellar_wallet_sdk
 
-final class StellarUnitTests: XCTestCase {
+final class StellarTest: XCTestCase {
 
     static let horizonHost = "horizon-testnet.stellar.org"
 
@@ -355,7 +355,7 @@ final class StellarUnitTests: XCTestCase {
         let op = try XCTUnwrap(tx.operations.first as? SetOptionsOperation)
         XCTAssertEqual(UInt32(10), op.signerWeight)
         let signerKey = try XCTUnwrap(op.signer)
-        XCTAssertEqual(signerKp.address, StellarUnitTests.ed25519AccountId(signerKey))
+        XCTAssertEqual(signerKp.address, StellarTest.ed25519AccountId(signerKey))
     }
 
     func testRemoveAccountSignerSetsWeightZero() async throws {
@@ -366,7 +366,7 @@ final class StellarUnitTests: XCTestCase {
         let op = try XCTUnwrap(tx.operations.first as? SetOptionsOperation)
         XCTAssertEqual(UInt32(0), op.signerWeight)
         let signerKey = try XCTUnwrap(op.signer)
-        XCTAssertEqual(signerKp.address, StellarUnitTests.ed25519AccountId(signerKey))
+        XCTAssertEqual(signerKp.address, StellarTest.ed25519AccountId(signerKey))
     }
 
     func testRemoveAccountSignerForMasterKeyThrows() async throws {
@@ -422,7 +422,7 @@ final class StellarUnitTests: XCTestCase {
     }
 
     func testAddOperation() async throws {
-        let manageData = try ManageDataOperation(sourceAccountId: sourceKp.address, name: "key", data: "value".data(using: .utf8))
+        let manageData = ManageDataOperation(sourceAccountId: sourceKp.address, name: "key", data: "value".data(using: .utf8))
         let tx = try (await sourceTxBuilder())
             .addOperation(operation: manageData)
             .build()
@@ -754,9 +754,9 @@ final class StellarUnitTests: XCTestCase {
         let feeAccount = wallet.stellar.account.createKeyPair()
         let feeBump = try wallet.stellar.makeFeeBump(feeAddress: feeAccount, transaction: inner, baseFee: 200)
 
-        XCTAssertEqual(0, try StellarUnitTests.feeBumpSignatureCount(feeBump))
+        XCTAssertEqual(0, try StellarTest.feeBumpSignatureCount(feeBump))
         wallet.stellar.sign(feeBumpTx: feeBump, keyPair: feeAccount)
-        XCTAssertEqual(1, try StellarUnitTests.feeBumpSignatureCount(feeBump))
+        XCTAssertEqual(1, try StellarTest.feeBumpSignatureCount(feeBump))
     }
 
     /// Counts the outer (fee bump) signatures by decoding the encoded envelope.
@@ -1084,7 +1084,7 @@ class StellarUnitHorizonAccountMock: ResponsesMock {
             mock.statusCode = 200
             return self.accountJson()
         }
-        return RequestMock(host: StellarUnitTests.horizonHost,
+        return RequestMock(host: StellarTest.horizonHost,
                            path: "/accounts/\(accountId)",
                            httpMethod: "GET",
                            mockHandler: handler)
@@ -1104,14 +1104,14 @@ class StellarUnitHorizonAccountMock: ResponsesMock {
         return """
         {
           "_links": {
-            "self": { "href": "https://\(StellarUnitTests.horizonHost)/accounts/\(accountId)" },
-            "transactions": { "href": "https://\(StellarUnitTests.horizonHost)/accounts/\(accountId)/transactions{?cursor,limit,order}", "templated": true },
-            "operations": { "href": "https://\(StellarUnitTests.horizonHost)/accounts/\(accountId)/operations{?cursor,limit,order}", "templated": true },
-            "payments": { "href": "https://\(StellarUnitTests.horizonHost)/accounts/\(accountId)/payments{?cursor,limit,order}", "templated": true },
-            "effects": { "href": "https://\(StellarUnitTests.horizonHost)/accounts/\(accountId)/effects{?cursor,limit,order}", "templated": true },
-            "offers": { "href": "https://\(StellarUnitTests.horizonHost)/accounts/\(accountId)/offers{?cursor,limit,order}", "templated": true },
-            "trades": { "href": "https://\(StellarUnitTests.horizonHost)/accounts/\(accountId)/trades{?cursor,limit,order}", "templated": true },
-            "data": { "href": "https://\(StellarUnitTests.horizonHost)/accounts/\(accountId)/data/{key}", "templated": true }
+            "self": { "href": "https://\(StellarTest.horizonHost)/accounts/\(accountId)" },
+            "transactions": { "href": "https://\(StellarTest.horizonHost)/accounts/\(accountId)/transactions{?cursor,limit,order}", "templated": true },
+            "operations": { "href": "https://\(StellarTest.horizonHost)/accounts/\(accountId)/operations{?cursor,limit,order}", "templated": true },
+            "payments": { "href": "https://\(StellarTest.horizonHost)/accounts/\(accountId)/payments{?cursor,limit,order}", "templated": true },
+            "effects": { "href": "https://\(StellarTest.horizonHost)/accounts/\(accountId)/effects{?cursor,limit,order}", "templated": true },
+            "offers": { "href": "https://\(StellarTest.horizonHost)/accounts/\(accountId)/offers{?cursor,limit,order}", "templated": true },
+            "trades": { "href": "https://\(StellarTest.horizonHost)/accounts/\(accountId)/trades{?cursor,limit,order}", "templated": true },
+            "data": { "href": "https://\(StellarTest.horizonHost)/accounts/\(accountId)/data/{key}", "templated": true }
           },
           "id": "\(accountId)",
           "account_id": "\(accountId)",
@@ -1158,7 +1158,7 @@ class StellarUnitHorizonNotFoundMock: ResponsesMock {
             mock.statusCode = 404
             return self?.resourceMissingResponse()
         }
-        return RequestMock(host: StellarUnitTests.horizonHost,
+        return RequestMock(host: StellarTest.horizonHost,
                            path: "/accounts/*",
                            httpMethod: "GET",
                            mockHandler: handler)
@@ -1192,7 +1192,7 @@ class StellarUnitSubmitSuccessMock: ResponsesMock {
             let envelope = self.envelopeXdr ?? self.envelopeFrom(request: request) ?? ""
             return self.submitJson(envelope: envelope)
         }
-        let mock = RequestMock(host: StellarUnitTests.horizonHost,
+        let mock = RequestMock(host: StellarTest.horizonHost,
                                path: "/transactions",
                                httpMethod: "POST",
                                mockHandler: handler)
@@ -1216,13 +1216,13 @@ class StellarUnitSubmitSuccessMock: ResponsesMock {
         return """
         {
           "_links": {
-            "self": { "href": "https://\(StellarUnitTests.horizonHost)/transactions/abc" },
-            "account": { "href": "https://\(StellarUnitTests.horizonHost)/accounts/\(sourceAccountId)" },
-            "ledger": { "href": "https://\(StellarUnitTests.horizonHost)/ledgers/100" },
-            "operations": { "href": "https://\(StellarUnitTests.horizonHost)/transactions/abc/operations{?cursor,limit,order}", "templated": true },
-            "effects": { "href": "https://\(StellarUnitTests.horizonHost)/transactions/abc/effects{?cursor,limit,order}", "templated": true },
-            "precedes": { "href": "https://\(StellarUnitTests.horizonHost)/transactions?order=asc&cursor=1" },
-            "succeeds": { "href": "https://\(StellarUnitTests.horizonHost)/transactions?order=desc&cursor=1" }
+            "self": { "href": "https://\(StellarTest.horizonHost)/transactions/abc" },
+            "account": { "href": "https://\(StellarTest.horizonHost)/accounts/\(sourceAccountId)" },
+            "ledger": { "href": "https://\(StellarTest.horizonHost)/ledgers/100" },
+            "operations": { "href": "https://\(StellarTest.horizonHost)/transactions/abc/operations{?cursor,limit,order}", "templated": true },
+            "effects": { "href": "https://\(StellarTest.horizonHost)/transactions/abc/effects{?cursor,limit,order}", "templated": true },
+            "precedes": { "href": "https://\(StellarTest.horizonHost)/transactions?order=asc&cursor=1" },
+            "succeeds": { "href": "https://\(StellarTest.horizonHost)/transactions?order=desc&cursor=1" }
           },
           "id": "f1e2d3c4b5a6978889aabbccddeeff00112233445566778899aabbccddeeff00",
           "paging_token": "429496729600",
@@ -1272,7 +1272,7 @@ class StellarUnitSubmitFailureMock: ResponsesMock {
             }
             """
         }
-        let mock = RequestMock(host: StellarUnitTests.horizonHost,
+        let mock = RequestMock(host: StellarTest.horizonHost,
                                path: "/transactions",
                                httpMethod: "POST",
                                mockHandler: handler)
@@ -1315,7 +1315,7 @@ class StellarUnitFriendbotMock: ResponsesMock {
                 return "account already exists"
             }
         }
-        let mock = RequestMock(host: StellarUnitTests.horizonHost,
+        let mock = RequestMock(host: StellarTest.horizonHost,
                                path: "/friendbot",
                                httpMethod: "GET",
                                mockHandler: handler)
@@ -1381,7 +1381,7 @@ class StellarUnitPathsMock: ResponsesMock {
             mock.statusCode = 200
             return self.pathsJson()
         }
-        let mock = RequestMock(host: StellarUnitTests.horizonHost,
+        let mock = RequestMock(host: StellarTest.horizonHost,
                                path: kind.path,
                                httpMethod: "GET",
                                mockHandler: handler)
@@ -1464,7 +1464,7 @@ class StellarUnitPathsErrorMock: ResponsesMock {
             }
             """
         }
-        let mock = RequestMock(host: StellarUnitTests.horizonHost,
+        let mock = RequestMock(host: StellarTest.horizonHost,
                                path: kind.path,
                                httpMethod: "GET",
                                mockHandler: handler)

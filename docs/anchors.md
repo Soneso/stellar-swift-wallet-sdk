@@ -147,7 +147,7 @@ NotificationCenter.default.addObserver(self,
 }
 ```
 
-Examples can be found in the [InteractiveFlowTest](https://github.com/Soneso/stellar-swift-wallet-sdk/blob/main/Tests/stellar-wallet-sdkTests/InteractiveFlowTest.swift).
+Examples can be found in the [InteractiveFlowTest](https://github.com/Soneso/stellar-swift-wallet-sdk/blob/main/Tests/stellar-wallet-sdkUnitTests/InteractiveFlowTest.swift).
 
 ## Add client domain signing
 
@@ -229,7 +229,7 @@ the `transaction` and `network_passphrase`. On the server side you can now sign 
 keypair and send it back as a result. As mentioned before, this sample implementation doesn't have any protection
 against unauthorized requests, so you must add authorization checks as part of the request.
 
-An example client implementation can be found in the [AuthTest](https://github.com/Soneso/stellar-swift-wallet-sdk/blob/main/Tests/stellar-wallet-sdkTests/AuthTest.swift). 
+An example client implementation can be found in the [AuthTest](https://github.com/Soneso/stellar-swift-wallet-sdk/blob/main/Tests/stellar-wallet-sdkUnitTests/AuthTest.swift). 
 The test uses an example server implementation that can be found [here](https://github.com/Soneso/go-server-signer).
 
 

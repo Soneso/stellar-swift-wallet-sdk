@@ -10,7 +10,7 @@
 - `TxBuilder.strictReceive` (and `pathPay` with a `destAmount`) crashed when called without an explicit `sendMax`: the default value overflowed `Int64` during stroop conversion. The default is now the exact maximum amount.
 
 ### Testing and tooling
-- Split the test suite into a unit target (`Tests/stellar-wallet-sdkTests`, offline and mocked, run in CI) and an integration target (`Tests/stellar-wallet-sdkIntegrationTests`, live network and Docker, run locally). The unit suites are isolated from one another.
+- Split the test suite into a unit target (`Tests/stellar-wallet-sdkUnitTests`, offline and mocked, run in CI) and an integration target (`Tests/stellar-wallet-sdkIntegrationTests`, live network and Docker, run locally). The unit suites are isolated from one another.
 - Added an offline unit test suite; unit line coverage is approximately 95%.
 - Added GitHub Actions CI and Codecov coverage reporting.
 

@@ -17,7 +17,7 @@ jobs:
       - name: Build
         run: swift build --build-tests
       - name: Run unit tests with coverage
-        run: swift test --filter stellar_wallet_sdkTests --enable-code-coverage
+        run: swift test --filter stellar_wallet_sdkUnitTests --enable-code-coverage
       - name: Export coverage to lcov
         run: |
           BIN=$(swift build --show-bin-path)

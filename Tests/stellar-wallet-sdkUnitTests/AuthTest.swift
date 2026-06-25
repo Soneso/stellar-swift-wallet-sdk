@@ -333,6 +333,214 @@ final class AuthTest: XCTestCase {
             XCTFail(error.localizedDescription)
         }
     }
+
+    // MARK: - Sep10 remaining branches (AuthToken decode + client domain errors)
+
+    func testAuthTokenDecodeClaims() throws {
+        let token = try AuthToken(jwt: AuthTestSep10Fixtures.jwtWithClaims)
+        XCTAssertEqual(AuthTestSep10Fixtures.jwtWithClaims, token.jwt)
+        XCTAssertEqual("https://issuer.example", token.issuer)
+        XCTAssertEqual("GABC:def:1234", token.principalAccount)
+        // account strips everything after the first colon.
+        XCTAssertEqual("GABC", token.account)
+        XCTAssertEqual("client.example", token.clientDomain)
+        XCTAssertEqual(Date(timeIntervalSince1970: 1700000000), token.issuedAt)
+        XCTAssertEqual(Date(timeIntervalSince1970: 1700003600), token.expiresAt)
+        XCTAssertEqual("c2lnbmF0dXJlc2VnbWVudA", token.signature)
+    }
+
+    func testAuthTokenInvalidSegmentCountThrows() {
+        // Only two segments instead of three.
+        XCTAssertThrowsError(try AuthToken(jwt: "header.payload")) { error in
+            guard case AnchorAuthError.invalidJwtToken = error else {
+                return XCTFail("expected invalidJwtToken, got \(error)")
+            }
+        }
+    }
+
+    func testAuthTokenMissingClaimsThrows() {
+        // Valid base64 header + payload with no iss claim. payload = {"foo":"bar"}
+        let payload = "eyJmb28iOiJiYXIifQ" // {"foo":"bar"}
+        let header = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
+        let jwt = "\(header).\(payload).sig"
+        XCTAssertThrowsError(try AuthToken(jwt: jwt)) { error in
+            guard case AnchorAuthError.invalidJwtToken = error else {
+                return XCTFail("expected invalidJwtToken, got \(error)")
+            }
+        }
+    }
+
+    func testAuthTokenInvalidBase64Throws() {
+        // Three segments but the payload is not valid base64 JSON.
+        let jwt = "!!!.@@@.###"
+        XCTAssertThrowsError(try AuthToken(jwt: jwt)) { error in
+            guard let anchorErr = error as? AnchorAuthError else {
+                return XCTFail("expected AnchorAuthError, got \(error)")
+            }
+            switch anchorErr {
+            case .invalidJwtToken, .invalidJwtPayload:
+                break
+            default:
+                XCTFail("unexpected AnchorAuthError: \(anchorErr)")
+            }
+        }
+    }
+
+    func testSep10ServerPropertiesExposed() async throws {
+        // Anchor.sep10 reads the toml; verify Sep10 carries the configured server values.
+        let tomlMock = TomlResponseMock(host: "sep10.corecov.example",
+                                        serverSigningKey: AuthTestSep10Fixtures.serverAccountId,
+                                        authServer: "https://auth.sep10.corecov.example/auth")
+
+        let anchor = wallet.anchor(homeDomain: "sep10.corecov.example")
+        let sep10 = try await anchor.sep10
+        XCTAssertEqual("sep10.corecov.example", sep10.serverHomeDomain)
+        XCTAssertEqual("https://auth.sep10.corecov.example/auth", sep10.serverAuthEndpoint)
+        XCTAssertEqual(AuthTestSep10Fixtures.serverAccountId, sep10.serverSigningKey)
+        // Keep the auto-registered toml mock alive until after the network fetch.
+        withExtendedLifetime(tomlMock) {}
+    }
+
+    func testSep10NotSupportedWhenNoWebAuthEndpoint() async throws {
+        // toml without WEB_AUTH_ENDPOINT -> Anchor.sep10 must throw notSupported.
+        let tomlMock = TomlResponseMock(host: "nosep10.corecov.example",
+                                        serverSigningKey: AuthTestSep10Fixtures.serverAccountId)
+
+        let anchor = wallet.anchor(homeDomain: "nosep10.corecov.example")
+        do {
+            _ = try await anchor.sep10
+            XCTFail("should have thrown")
+        } catch AnchorAuthError.notSupported {
+            // expected
+        } catch {
+            XCTFail("unexpected error: \(error)")
+        }
+        withExtendedLifetime(tomlMock) {}
+    }
+
+    func testSep10ClientDomainSigningKeyNotFound() async throws {
+        // Anchor toml is fine for sep10. The client domain toml has NO signing key.
+        let anchorHost = "anchor.cd1.corecov.example"
+        let clientHost = "client.cd1.corecov.example"
+        let anchorTomlMock = TomlResponseMock(host: anchorHost,
+                                              serverSigningKey: AuthTestSep10Fixtures.serverAccountId,
+                                              authServer: "https://auth.\(anchorHost)/auth")
+        let clientTomlMock = AuthTestTomlNoSigningKeyMock(host: clientHost)
+
+        let anchor = wallet.anchor(homeDomain: anchorHost)
+        let sep10 = try await anchor.sep10
+        let userKp = SigningKeyPair.random
+        let clientSigner = try DomainSigner(url: "https://\(clientHost)/sign")
+
+        do {
+            _ = try await sep10.authenticate(userKeyPair: userKp,
+                                             clientDomain: clientHost,
+                                             clientDomainSigner: clientSigner)
+            XCTFail("should have thrown")
+        } catch AnchorAuthError.clientDomainSigningKeyNotFound(let clientDomain) {
+            XCTAssertEqual(clientHost, clientDomain)
+        } catch {
+            XCTFail("unexpected error: \(error)")
+        }
+        withExtendedLifetime(anchorTomlMock) {}
+        withExtendedLifetime(clientTomlMock) {}
+    }
+
+    func testSep10InvalidClientDomainSigningKey() async throws {
+        let anchorHost = "anchor.cd2.corecov.example"
+        let clientHost = "client.cd2.corecov.example"
+        let anchorTomlMock = TomlResponseMock(host: anchorHost,
+                                              serverSigningKey: AuthTestSep10Fixtures.serverAccountId,
+                                              authServer: "https://auth.\(anchorHost)/auth")
+        let clientTomlMock = AuthTestTomlInvalidSigningKeyMock(host: clientHost)
+
+        let anchor = wallet.anchor(homeDomain: anchorHost)
+        let sep10 = try await anchor.sep10
+        let userKp = SigningKeyPair.random
+        let clientSigner = try DomainSigner(url: "https://\(clientHost)/sign")
+
+        do {
+            _ = try await sep10.authenticate(userKeyPair: userKp,
+                                             clientDomain: clientHost,
+                                             clientDomainSigner: clientSigner)
+            XCTFail("should have thrown")
+        } catch AnchorAuthError.invaildClientDomainSigningKey(let clientDomain, let key) {
+            XCTAssertEqual(clientHost, clientDomain)
+            XCTAssertEqual("NOT_A_VALID_STELLAR_ACCOUNT_ID", key)
+        } catch {
+            XCTFail("unexpected error: \(error)")
+        }
+        withExtendedLifetime(anchorTomlMock) {}
+        withExtendedLifetime(clientTomlMock) {}
+    }
+}
+
+/// Fixtures for the folded Sep10 remaining-branch tests, prefixed to avoid
+/// collisions with the names already used in this suite.
+final class AuthTestSep10Fixtures {
+    static let serverAccountId = "GBWMCCC3NHSKLAOJDBKKYW7SSH2PFTTNVFKWSGLWGDLEBKLOVP5JLBBP"
+
+    /// A real, structurally valid JWT (header.payload.signature) with iss/sub/iat/exp/client_domain.
+    /// Header: {"alg":"HS256","typ":"JWT"}
+    /// Payload: {"iss":"https://issuer.example","sub":"GABC...:1234","iat":1700000000,"exp":1700003600,"client_domain":"client.example"}
+    static let jwtWithClaims = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2lzc3Vlci5leGFtcGxlIiwic3ViIjoiR0FCQzpkZWY6MTIzNCIsImlhdCI6MTcwMDAwMDAwMCwiZXhwIjoxNzAwMDAzNjAwLCJjbGllbnRfZG9tYWluIjoiY2xpZW50LmV4YW1wbGUifQ.c2lnbmF0dXJlc2VnbWVudA"
+}
+
+/// Mock that returns a SEP-10 toml WITHOUT a SIGNING_KEY, used to exercise the
+/// clientDomainSigningKeyNotFound error path in Sep10.authenticate.
+class AuthTestTomlNoSigningKeyMock: ResponsesMock {
+    let host: String
+
+    init(host: String) {
+        self.host = host
+        super.init()
+    }
+
+    override func requestMock() -> RequestMock {
+        let handler: MockHandler = { [weak self] _, _ in
+            return self?.tomlNoSigningKey
+        }
+        return RequestMock(host: host,
+                           path: "/.well-known/stellar.toml",
+                           httpMethod: "GET",
+                           mockHandler: handler)
+    }
+
+    var tomlNoSigningKey: String {
+        return """
+            VERSION="2.0.0"
+            NETWORK_PASSPHRASE="\(Network.testnet.passphrase)"
+            """
+    }
+}
+
+/// Mock that returns a SEP-10 toml with an INVALID SIGNING_KEY (not a valid account id),
+/// used to exercise the invaildClientDomainSigningKey error path in Sep10.authenticate.
+class AuthTestTomlInvalidSigningKeyMock: ResponsesMock {
+    let host: String
+
+    init(host: String) {
+        self.host = host
+        super.init()
+    }
+
+    override func requestMock() -> RequestMock {
+        let handler: MockHandler = { [weak self] _, _ in
+            return self?.tomlInvalidSigningKey
+        }
+        return RequestMock(host: host,
+                           path: "/.well-known/stellar.toml",
+                           httpMethod: "GET",
+                           mockHandler: handler)
+    }
+
+    var tomlInvalidSigningKey: String {
+        return """
+            VERSION="2.0.0"
+            NETWORK_PASSPHRASE="\(Network.testnet.passphrase)"
+            SIGNING_KEY="NOT_A_VALID_STELLAR_ACCOUNT_ID"
+            """
+    }
 }
 
 class WebAuthTomlResponseMock: ResponsesMock {

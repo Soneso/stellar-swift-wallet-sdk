@@ -568,6 +568,326 @@ final class RecoveryTest: XCTestCase {
             XCTAssertEqual(accountId, thresholdOp.sourceAccountId)
         }
     }
+
+    // MARK: - Recovery model types
+
+    func testRecoveryServerKeyEqualityAndHash() {
+        let a = RecoveryServerKey(name: "server1")
+        let b = RecoveryServerKey(name: "server1")
+        let c = RecoveryServerKey(name: "server2")
+        XCTAssertEqual(a, b)
+        XCTAssertNotEqual(a, c)
+        XCTAssertEqual(a.hashValue, b.hashValue)
+
+        var dict: [RecoveryServerKey: Int] = [:]
+        dict[a] = 1
+        dict[b] = 2 // overwrites because a == b
+        dict[c] = 3
+        XCTAssertEqual(2, dict.count)
+        XCTAssertEqual(2, dict[a])
+    }
+
+    func testRecoveryServerProperties() throws {
+        let signer = try DomainSigner(url: RecoveryModelTestFixtures.signerUrl)
+        let server = RecoveryServer(endpoint: "https://recovery.example.com",
+                                    authEndpoint: "https://auth.example.com",
+                                    homeDomain: "recovery.example.com",
+                                    walletSigner: signer,
+                                    clientDomain: "client.example.com")
+        XCTAssertEqual("https://recovery.example.com", server.endpoint)
+        XCTAssertEqual("https://auth.example.com", server.authEndpoint)
+        XCTAssertEqual("recovery.example.com", server.homeDomain)
+        XCTAssertTrue(server.walletSigner is DomainSigner)
+        XCTAssertEqual("client.example.com", server.clientDomain)
+    }
+
+    func testRecoveryServerOptionalDefaults() {
+        let server = RecoveryServer(endpoint: "https://recovery.example.com",
+                                    authEndpoint: "https://auth.example.com",
+                                    homeDomain: "recovery.example.com")
+        XCTAssertNil(server.walletSigner)
+        XCTAssertNil(server.clientDomain)
+    }
+
+    func testRecoveryServerSigning() {
+        let signing = RecoveryServerSigning(signerAddress: RecoveryModelTestFixtures.serverAccountId,
+                                            authToken: "jwt-token")
+        XCTAssertEqual(RecoveryModelTestFixtures.serverAccountId, signing.signerAddress)
+        XCTAssertEqual("jwt-token", signing.authToken)
+    }
+
+    func testSignerWeight() {
+        let w = SignerWeight(device: 10, recoveryServer: 5)
+        XCTAssertEqual(10, w.device)
+        XCTAssertEqual(5, w.recoveryServer)
+    }
+
+    func testAccountThreshold() {
+        let t = AccountThreshold(low: 1, medium: 2, high: 3)
+        XCTAssertEqual(1, t.low)
+        XCTAssertEqual(2, t.medium)
+        XCTAssertEqual(3, t.high)
+    }
+
+    func testRecoveryRoleRawValues() {
+        XCTAssertEqual("owner", RecoveryRole.owner.rawValue)
+        XCTAssertEqual("sender", RecoveryRole.sender.rawValue)
+        XCTAssertEqual("receiver", RecoveryRole.receiver.rawValue)
+        XCTAssertEqual(.owner, RecoveryRole(rawValue: "owner"))
+        XCTAssertNil(RecoveryRole(rawValue: "admin"))
+    }
+
+    func testRecoveryTypeRawValues() {
+        XCTAssertEqual("stellar_address", RecoveryType.stellarAddress.rawValue)
+        XCTAssertEqual("phone_number", RecoveryType.phoneNumber.rawValue)
+        XCTAssertEqual("email", RecoveryType.email.rawValue)
+        XCTAssertEqual(.email, RecoveryType(rawValue: "email"))
+        XCTAssertNil(RecoveryType(rawValue: "carrier_pigeon"))
+    }
+
+    func testRecoveryAccountAuthMethodToSep30() {
+        let method = RecoveryAccountAuthMethod(type: .email, value: "user@example.com")
+        XCTAssertEqual(.email, method.type)
+        XCTAssertEqual("user@example.com", method.value)
+
+        let sep30 = method.toSEP30AuthMethod()
+        XCTAssertEqual("email", sep30.type)
+        XCTAssertEqual("user@example.com", sep30.value)
+    }
+
+    func testRecoveryAccountIdentityToSep30() {
+        let m1 = RecoveryAccountAuthMethod(type: .email, value: "user@example.com")
+        let m2 = RecoveryAccountAuthMethod(type: .phoneNumber, value: "+1555")
+        let identity = RecoveryAccountIdentity(role: .owner, authMethods: [m1, m2])
+        XCTAssertEqual(.owner, identity.role)
+        XCTAssertEqual(2, identity.authMethods.count)
+
+        let sep30 = identity.toSEP30RequestIdentity()
+        XCTAssertEqual("owner", sep30.role)
+        XCTAssertEqual(2, sep30.authMethods.count)
+        XCTAssertEqual("email", sep30.authMethods[0].type)
+        XCTAssertEqual("phone_number", sep30.authMethods[1].type)
+    }
+
+    func testAccountSigner() {
+        let kp = SigningKeyPair.random
+        let signer = AccountSigner(address: kp, weight: 7)
+        XCTAssertEqual(kp.address, signer.address.address)
+        XCTAssertEqual(7, signer.weight)
+    }
+
+    func testRecoverableWalletConfig() throws {
+        let accountKp = SigningKeyPair.random
+        let deviceKp = SigningKeyPair.random
+        let threshold = AccountThreshold(low: 10, medium: 10, high: 10)
+        let serverKey = RecoveryServerKey(name: "server1")
+        let identity = RecoveryAccountIdentity(role: .owner,
+                                               authMethods: [RecoveryAccountAuthMethod(type: .email, value: "a@b.c")])
+        let weight = SignerWeight(device: 10, recoveryServer: 5)
+
+        let config = RecoverableWalletConfig(accountAddress: accountKp,
+                                             deviceAddress: deviceKp,
+                                             accountThreshold: threshold,
+                                             accountIdentity: [serverKey: [identity]],
+                                             signerWeight: weight)
+        XCTAssertEqual(accountKp.address, config.accountAddress.address)
+        XCTAssertEqual(deviceKp.address, config.deviceAddress.address)
+        XCTAssertEqual(10, config.accountThreshold.high)
+        XCTAssertEqual(1, config.accountIdentity.count)
+        XCTAssertEqual(10, config.signerWeight.device)
+        XCTAssertNil(config.sponsorAddress)
+
+        let sponsorKp = SigningKeyPair.random
+        let sponsored = RecoverableWalletConfig(accountAddress: accountKp,
+                                                deviceAddress: deviceKp,
+                                                accountThreshold: threshold,
+                                                accountIdentity: [serverKey: [identity]],
+                                                signerWeight: weight,
+                                                sponsorAddress: sponsorKp)
+        XCTAssertNotNil(sponsored.sponsorAddress)
+        XCTAssertEqual(sponsorKp.address, sponsored.sponsorAddress?.address)
+    }
+
+    func testRecoverableWalletHoldsTransactionAndSigners() throws {
+        let sourceKp = SigningKeyPair.random
+        let account = Account(keyPair: sourceKp.keyPair, sequenceNumber: 1)
+        let op = try PaymentOperation(sourceAccountId: sourceKp.address,
+                                      destinationAccountId: RecoveryModelTestFixtures.issuer,
+                                      asset: Asset(type: AssetType.ASSET_TYPE_NATIVE)!,
+                                      amount: 1)
+        let tx = try Transaction(sourceAccount: account, operations: [op], memo: Memo.none)
+        let recoverable = RecoverableWallet(transaction: tx, signers: ["signer1", "signer2"])
+        XCTAssertTrue(recoverable.transaction === tx)
+        XCTAssertEqual(["signer1", "signer2"], recoverable.signers)
+    }
+
+    func testRecoverableIdentityFromResponseValid() throws {
+        let response = try RecoveryModelTestFixtures.decodeSep30Identity(json: """
+            {"role": "owner", "authenticated": true}
+            """)
+        let identity = try RecoverableIdentity(response: response)
+        XCTAssertEqual(.owner, identity.role)
+        XCTAssertEqual(true, identity.authenticated)
+    }
+
+    func testRecoverableIdentityFromResponseMissingRoleThrows() throws {
+        let response = try RecoveryModelTestFixtures.decodeSep30Identity(json: "{}")
+        XCTAssertThrowsError(try RecoverableIdentity(response: response)) { error in
+            guard case RecoveryServiceError.parsingResponseFailed = error else {
+                return XCTFail("expected parsingResponseFailed, got \(error)")
+            }
+        }
+    }
+
+    func testRecoverableIdentityFromResponseUnknownRoleThrows() throws {
+        let response = try RecoveryModelTestFixtures.decodeSep30Identity(json: """
+            {"role": "wizard"}
+            """)
+        XCTAssertThrowsError(try RecoverableIdentity(response: response)) { error in
+            guard case RecoveryServiceError.parsingResponseFailed = error else {
+                return XCTFail("expected parsingResponseFailed, got \(error)")
+            }
+        }
+    }
+
+    func testRecoverableSignerFromResponseValid() throws {
+        let response = try RecoveryModelTestFixtures.decodeSep30Signer(json: """
+            {"key": "\(RecoveryModelTestFixtures.issuer)"}
+            """)
+        let signer = try RecoverableSigner(response: response)
+        XCTAssertEqual(RecoveryModelTestFixtures.issuer, signer.key.address)
+        XCTAssertNil(signer.added)
+    }
+
+    func testRecoverableSignerFromResponseInvalidKeyThrows() throws {
+        let response = try RecoveryModelTestFixtures.decodeSep30Signer(json: """
+            {"key": "NOT_A_KEY"}
+            """)
+        XCTAssertThrowsError(try RecoverableSigner(response: response)) { error in
+            guard case RecoveryServiceError.parsingResponseFailed = error else {
+                return XCTFail("expected parsingResponseFailed, got \(error)")
+            }
+        }
+    }
+
+    func testRecoverableAccountInfoFromResponse() throws {
+        let response = try RecoveryModelTestFixtures.decodeSep30Account(json: """
+            {
+              "address": "\(RecoveryModelTestFixtures.otherIssuer)",
+              "identities": [{"role": "owner", "authenticated": true}],
+              "signers": [{"key": "\(RecoveryModelTestFixtures.issuer)"}]
+            }
+            """)
+        let info = try RecoverableAccountInfo(response: response)
+        XCTAssertEqual(RecoveryModelTestFixtures.otherIssuer, info.address.address)
+        XCTAssertEqual(1, info.identities.count)
+        XCTAssertEqual(.owner, info.identities[0].role)
+        XCTAssertEqual(1, info.signers.count)
+        XCTAssertEqual(RecoveryModelTestFixtures.issuer, info.signers[0].key.address)
+    }
+
+    // MARK: - AccountRecover.deduceKey throwing branches via replaceDeviceKey
+
+    func testReplaceDeviceKeyNoDeviceKeyThrows() async throws {
+        // Account whose only weighted signer is a recovery signer -> no non-recovery
+        // signer remains, so deduceKey throws "No device key is setup for this account".
+        let accountKp = try SigningKeyPair(secretKey: RecoverDeduceUtils.userSecretSeed)
+        let recoverySignerKp = SigningKeyPair.random
+        let newKey = SigningKeyPair.random
+
+        let horizonMock = RecoverDeduceHorizonAccountMock(
+            accountId: accountKp.address,
+            signers: [
+                (key: accountKp.address, weight: 0),                 // master, weight 0 -> ignored
+                (key: recoverySignerKp.address, weight: 5),          // recovery signer
+            ])
+
+        let serverKey = RecoveryServerKey(name: "deduce-server")
+        let server = RecoveryServer(endpoint: "https://recovery.deduce.example",
+                                    authEndpoint: "https://auth.deduce.example/auth",
+                                    homeDomain: "recovery.deduce.example")
+        let recovery = wallet.recovery(servers: [serverKey: server])
+        let serverAuth: [RecoveryServerKey: RecoveryServerSigning] = [
+            serverKey: RecoveryServerSigning(signerAddress: recoverySignerKp.address, authToken: "token")
+        ]
+
+        do {
+            _ = try await recovery.replaceDeviceKey(account: accountKp,
+                                                    newKey: newKey,
+                                                    serverAuth: serverAuth)
+            XCTFail("expected ValidationError.invalidArgument (no device key)")
+        } catch ValidationError.invalidArgument(let message) {
+            XCTAssertEqual("No device key is setup for this account", message)
+        }
+
+        withExtendedLifetime(horizonMock) {}
+    }
+
+    func testReplaceDeviceKeyAmbiguousDeviceKeyThrows() async throws {
+        // Two non-recovery signers whose weights both differ from the single recovery
+        // weight -> deduceKey cannot pick one and throws "Couldn't deduce lost key".
+        let accountKp = try SigningKeyPair(secretKey: RecoverDeduceUtils.userSecretSeed)
+        let recoverySignerKp = SigningKeyPair.random
+        let device1Kp = SigningKeyPair.random
+        let device2Kp = SigningKeyPair.random
+        let newKey = SigningKeyPair.random
+
+        let horizonMock = RecoverDeduceHorizonAccountMock(
+            accountId: accountKp.address,
+            signers: [
+                (key: accountKp.address, weight: 0),         // master, ignored
+                (key: recoverySignerKp.address, weight: 5),  // single recovery signer (weight 5)
+                (key: device1Kp.address, weight: 10),        // non-recovery, weight 10
+                (key: device2Kp.address, weight: 20),        // non-recovery, weight 20
+            ])
+
+        let serverKey = RecoveryServerKey(name: "deduce-server")
+        let server = RecoveryServer(endpoint: "https://recovery.deduce.example",
+                                    authEndpoint: "https://auth.deduce.example/auth",
+                                    homeDomain: "recovery.deduce.example")
+        let recovery = wallet.recovery(servers: [serverKey: server])
+        let serverAuth: [RecoveryServerKey: RecoveryServerSigning] = [
+            serverKey: RecoveryServerSigning(signerAddress: recoverySignerKp.address, authToken: "token")
+        ]
+
+        do {
+            _ = try await recovery.replaceDeviceKey(account: accountKp,
+                                                    newKey: newKey,
+                                                    serverAuth: serverAuth)
+            XCTFail("expected ValidationError.invalidArgument (couldn't deduce lost key)")
+        } catch ValidationError.invalidArgument(let message) {
+            XCTAssertTrue(message.contains("Couldn't deduce lost key"),
+                          "unexpected message: \(message)")
+        }
+
+        withExtendedLifetime(horizonMock) {}
+    }
+}
+
+/// Fixtures for the folded recovery-model tests, prefixed to avoid collisions
+/// with the names already used in this suite.
+final class RecoveryModelTestFixtures {
+    static let issuer = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
+    static let otherIssuer = "GCZJM35NKGVK47BB4SPBDV25477PZYIYPVVG453LPYFNXLS3FGHDXOCM"
+
+    static let signerHost = "domain-signer.recoverymodel.example"
+    static let signerUrl = "https://\(signerHost)/sign"
+
+    static let serverAccountId = "GBWMCCC3NHSKLAOJDBKKYW7SSH2PFTTNVFKWSGLWGDLEBKLOVP5JLBBP"
+
+    /// The SEP-30 response model types in the underlying iOS SDK only expose a
+    /// Decodable initializer, so these helpers build them by decoding JSON.
+    static func decodeSep30Identity(json: String) throws -> SEP30ResponseIdentity {
+        return try JSONDecoder().decode(SEP30ResponseIdentity.self, from: json.data(using: .utf8)!)
+    }
+
+    static func decodeSep30Signer(json: String) throws -> SEP30ResponseSigner {
+        return try JSONDecoder().decode(SEP30ResponseSigner.self, from: json.data(using: .utf8)!)
+    }
+
+    static func decodeSep30Account(json: String) throws -> Sep30AccountResponse {
+        return try JSONDecoder().decode(Sep30AccountResponse.self, from: json.data(using: .utf8)!)
+    }
 }
 
 
@@ -819,5 +1139,81 @@ class RecoveryHorizonNotFoundMock: ResponsesMock {
                            path: "/accounts/*",
                            httpMethod: "GET",
                            mockHandler: handler)
+    }
+}
+
+
+// MARK: - deduceKey (replaceDeviceKey) support
+
+final class RecoverDeduceUtils {
+    static let userSecretSeed = "SBAYNYLQFXVLVAHW4BXDQYNJLMDQMZ5NQDDOHVJD3PTBAUIJRNRK5LGX"
+}
+
+/// Mocks GET https://horizon-testnet.stellar.org/accounts/{accountId} returning a
+/// fixed, valid Horizon AccountResponse for the given account and signer set.
+///
+/// The deduceKey branch tests only ever fetch the account from Horizon before the
+/// expected ValidationError is thrown, so this mock clears any other registered
+/// handlers on construction. That removes the suite's wildcard /accounts/* 404
+/// fallback (registered last in RecoveryTest.setUp), which would otherwise match
+/// before this account-specific mock and turn the account into a 404.
+class RecoverDeduceHorizonAccountMock: ResponsesMock {
+    let accountId: String
+    let signers: [(key: String, weight: Int)]
+
+    init(accountId: String, signers: [(key: String, weight: Int)]) {
+        self.accountId = accountId
+        self.signers = signers
+        ServerMock.removeAll()
+        super.init()
+    }
+
+    override func requestMock() -> RequestMock {
+        let handler: MockHandler = { [weak self] mock, _ in
+            guard let self = self else { return nil }
+            mock.statusCode = 200
+            return self.accountJson()
+        }
+        return RequestMock(host: "horizon-testnet.stellar.org",
+                           path: "/accounts/\(accountId)",
+                           httpMethod: "GET",
+                           mockHandler: handler)
+    }
+
+    private func accountJson() -> String {
+        let signersJson = signers.map { signer in
+            """
+            { "weight": \(signer.weight), "key": "\(signer.key)", "type": "ed25519_public_key" }
+            """
+        }.joined(separator: ",")
+
+        return """
+        {
+          "_links": {
+            "self": { "href": "https://horizon-testnet.stellar.org/accounts/\(accountId)" },
+            "transactions": { "href": "https://horizon-testnet.stellar.org/accounts/\(accountId)/transactions{?cursor,limit,order}", "templated": true },
+            "operations": { "href": "https://horizon-testnet.stellar.org/accounts/\(accountId)/operations{?cursor,limit,order}", "templated": true },
+            "payments": { "href": "https://horizon-testnet.stellar.org/accounts/\(accountId)/payments{?cursor,limit,order}", "templated": true },
+            "effects": { "href": "https://horizon-testnet.stellar.org/accounts/\(accountId)/effects{?cursor,limit,order}", "templated": true },
+            "offers": { "href": "https://horizon-testnet.stellar.org/accounts/\(accountId)/offers{?cursor,limit,order}", "templated": true },
+            "trades": { "href": "https://horizon-testnet.stellar.org/accounts/\(accountId)/trades{?cursor,limit,order}", "templated": true },
+            "data": { "href": "https://horizon-testnet.stellar.org/accounts/\(accountId)/data/{key}", "templated": true }
+          },
+          "id": "\(accountId)",
+          "account_id": "\(accountId)",
+          "sequence": "4233721387843585",
+          "subentry_count": 0,
+          "last_modified_ledger": 985731,
+          "last_modified_time": "2024-01-01T00:00:00Z",
+          "thresholds": { "low_threshold": 0, "med_threshold": 0, "high_threshold": 0 },
+          "flags": { "auth_required": false, "auth_revocable": false, "auth_immutable": false, "auth_clawback_enabled": false },
+          "balances": [ { "balance": "10000.0000000", "buying_liabilities": "0.0000000", "selling_liabilities": "0.0000000", "asset_type": "native" } ],
+          "signers": [ \(signersJson) ],
+          "data": {},
+          "num_sponsoring": 0,
+          "num_sponsored": 0,
+          "paging_token": "\(accountId)"
+        }
+        """
     }
 }

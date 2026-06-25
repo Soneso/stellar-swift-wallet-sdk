@@ -65,7 +65,7 @@ The SDK uses a layered configuration approach:
 
 ### Testing Structure
 
-- **Unit Tests** (`Tests/stellar-wallet-sdkTests/`): Test individual components
+- **Unit Tests** (`Tests/stellar-wallet-sdkUnitTests/`): Test individual components
 - **Integration Tests** (`Tests/stellar-wallet-sdkIntegrationTests/`): Test against real services using Docker containers
 
 The integration tests require Docker services defined in `Tests/docker-compose.test.yml`, which includes:

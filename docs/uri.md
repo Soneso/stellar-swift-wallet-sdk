@@ -92,4 +92,4 @@ let passesVerification = await uri.verifySignature() // true or false
 
 ## Further readings
 
-Multiple examples can be found in the [SEP-07 test cases](https://github.com/Soneso/stellar-swift-wallet-sdk/blob/main/Tests/stellar-wallet-sdkTests/UriTest.swift)
+Multiple examples can be found in the [SEP-07 test cases](https://github.com/Soneso/stellar-swift-wallet-sdk/blob/main/Tests/stellar-wallet-sdkUnitTests/UriTest.swift)

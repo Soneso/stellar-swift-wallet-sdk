@@ -18,7 +18,9 @@ stellar-wallet-sdkIntegrationTests/
 │   ├── DockerManager.swift                     # Docker container management
 │   └── TestConstants.swift                     # Test configuration and constants
 ├── AnchorPlatformIntegrationTests.swift        # SEP-10, 12, 6, 24, 38 tests
+├── AuthIntegrationTests.swift                  # SEP-10 web auth (live anchor + client domain)
 ├── RecoveryIntegrationTests.swift              # SEP-30 recovery protocol tests
+├── StellarIntegrationTests.swift               # Stellar/Horizon operations on testnet
 └── README.md                                   # This file
 ```
 
@@ -70,6 +72,24 @@ If your docker binary can not be found, docker dependent integration tests will 
 
 ## Test Categories
 
+### Stellar Operations Tests (StellarIntegrationTests.swift)
+
+Tests core Stellar/Horizon operations against testnet:
+
+- Account funding (Friendbot), creation, and info queries
+- Account merge and path payments
+- Trustlines (add/remove asset support)
+- Account thresholds and signer management (add/remove signers, lock master key)
+- Sponsored reserves (sponsored account creation, signer, trustline and threshold changes)
+- Transaction submission, fee bump, fee increase, and raw XDR submission
+
+### Web Authentication Tests (AuthIntegrationTests.swift)
+
+Tests SEP-10 web authentication against the live test anchor (testanchor.stellar.org):
+
+- Basic authentication flow
+- Authentication with a remote client domain signer
+
 ### Anchor Platform Tests (AnchorPlatformIntegrationTests.swift)
 
 Tests the following SEP protocols against a live anchor:
@@ -95,7 +115,7 @@ Tests the following SEP protocols against a live anchor:
   - Price queries
   - Quote creation and retrieval
 
-### Recovery Tests (RecoveryTests.swift)
+### Recovery Tests (RecoveryIntegrationTests.swift)
 
 Tests SEP-30 account recovery with multiple servers:
   

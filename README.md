@@ -142,10 +142,10 @@ We also recommend that you consult the code examples in the test cases of the SD
 
 The test suite is split into two targets:
 
-- **Unit tests** (`Tests/stellar-wallet-sdkTests`) run fully offline against mocked HTTP responses and are executed in CI. Run them with:
+- **Unit tests** (`Tests/stellar-wallet-sdkUnitTests`) run fully offline against mocked HTTP responses and are executed in CI. Run them with:
 
   ```bash
-  swift test --filter stellar_wallet_sdkTests
+  swift test --filter stellar_wallet_sdkUnitTests
   ```
 
 - **Integration tests** (`Tests/stellar-wallet-sdkIntegrationTests`) run against live test infrastructure (Stellar testnet, a live anchor, and Docker-based recovery servers) and are intended to be run locally. See the [integration tests README](https://github.com/Soneso/stellar-swift-wallet-sdk/blob/main/Tests/stellar-wallet-sdkIntegrationTests/README.md).

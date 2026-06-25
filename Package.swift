@@ -32,7 +32,7 @@ let package = Package(
             ]
         ),
         .testTarget(
-            name: "stellar-wallet-sdkTests",
+            name: "stellar-wallet-sdkUnitTests",
             dependencies: ["stellar-wallet-sdk"]),
         .testTarget(
             name: "stellar-wallet-sdkIntegrationTests",
