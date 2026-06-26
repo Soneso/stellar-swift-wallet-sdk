@@ -1,5 +1,8 @@
 ![logo](./docs/images/wallet-sdk-logo.png)
 
+[![Tests](https://github.com/Soneso/stellar-swift-wallet-sdk/actions/workflows/tests.yml/badge.svg)](https://github.com/Soneso/stellar-swift-wallet-sdk/actions/workflows/tests.yml)
+[![codecov](https://codecov.io/gh/Soneso/stellar-swift-wallet-sdk/branch/main/graph/badge.svg)](https://codecov.io/gh/Soneso/stellar-swift-wallet-sdk)
+
 The Stellar Swift Wallet SDK is a library that allows developers to build wallet applications on the Stellar Network faster. It
 utilizes the classic [iOS Stellar SDK](https://github.com/Soneso/stellar-ios-mac-sdk) to communicate with Stellar Horizon and Anchors.
 
@@ -133,7 +136,19 @@ You can read more about the SDK's SEP-7 support in the [respective doc section](
 
 Documentation can be found in the [docs](https://github.com/Soneso/stellar-swift-wallet-sdk/tree/main/docs) folder.
 
-We also recommend that you consult the code examples from the test cases, e.g. in the [Stellar Tests](https://github.com/Soneso/stellar-swift-wallet-sdk/blob/main/Tests/stellar-wallet-sdkTests/StellarTest.swift) of the SDK.
+We also recommend that you consult the code examples in the test cases of the SDK.
+
+### Tests
+
+The test suite is split into two targets:
+
+- **Unit tests** (`Tests/stellar-wallet-sdkUnitTests`) run fully offline against mocked HTTP responses and are executed in CI. Run them with:
+
+  ```bash
+  swift test --filter stellar_wallet_sdkUnitTests
+  ```
+
+- **Integration tests** (`Tests/stellar-wallet-sdkIntegrationTests`) run against live test infrastructure (Stellar testnet, a live anchor, and Docker-based recovery servers) and are intended to be run locally. See the [integration tests README](https://github.com/Soneso/stellar-swift-wallet-sdk/blob/main/Tests/stellar-wallet-sdkIntegrationTests/README.md).
 
 ## Example app
 

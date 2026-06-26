@@ -35,19 +35,24 @@ final class QuotesTest: XCTestCase {
     var sep38PriceMock: Sep38PriceResponseMock!
     var sep38RequestQuoteMock: Sep38RequestQuoteResponseMock!
     var sep38GetQuoteMock: Sep38GetQuoteResponseMock!
-    
+
+    var sep38vFullTomlMock: TomlResponseMock!
+    var sep38vChallengeMock: WebAuthChallengeResponseMock!
+    var sep38vSendChallengeMock: WebAuthSendChallengeResponseMock!
+    var sep38vQuoteMock: Sep38TestQuoteMock!
+
     override func setUp() {
         super.setUp()
-                
+        ServerMock.removeAll()
         URLProtocol.registerClass(ServerMock.self)
         anchorTomlServerMock = TomlResponseMock(host: QuotesTestUtils.anchorDomain,
                                                        serverSigningKey: QuotesTestUtils.serverAccountId,
                                                        authServer: QuotesTestUtils.webAuthEndpoint,
                                                 anchorQuoteServer: QuotesTestUtils.serviceAddress)
-        
+
         challengeServerMock = WebAuthChallengeResponseMock(host: QuotesTestUtils.apiHost,
                                                            serverKeyPair: QuotesTestUtils.serverKeypair)
-        
+
         sendChallengeServerMock = WebAuthSendChallengeResponseMock(host: QuotesTestUtils.apiHost)
         sep38InfoMock = Sep38InfoResponseMock(host:  QuotesTestUtils.apiHost)
         sep38PricesMock = Sep38PricesResponseMock(host: QuotesTestUtils.apiHost)
@@ -55,8 +60,180 @@ final class QuotesTest: XCTestCase {
         sep38RequestQuoteMock = Sep38RequestQuoteResponseMock(host: QuotesTestUtils.apiHost)
         sep38GetQuoteMock = Sep38GetQuoteResponseMock(host: QuotesTestUtils.apiHost)
 
+        sep38vFullTomlMock = TomlResponseMock(host: Sep38TestUtils.fullAnchorDomain,
+                                        serverSigningKey: Sep38TestUtils.serverAccountId,
+                                        authServer: Sep38TestUtils.webAuthEndpoint,
+                                        sep24TransferServer: Sep38TestUtils.interactiveServer,
+                                        anchorQuoteServer: Sep38TestUtils.quoteServer,
+                                        kycServer: Sep38TestUtils.kycServer)
+
+        sep38vChallengeMock = WebAuthChallengeResponseMock(host: Sep38TestUtils.apiHost,
+                                                     serverKeyPair: Sep38TestUtils.serverKeypair,
+                                                     homeDomain: Sep38TestUtils.fullAnchorDomain)
+        sep38vSendChallengeMock = WebAuthSendChallengeResponseMock(host: Sep38TestUtils.apiHost)
+
+        sep38vQuoteMock = Sep38TestQuoteMock(host: Sep38TestUtils.quoteHost)
     }
-    
+
+    override func tearDown() {
+        ServerMock.removeAll()
+        super.tearDown()
+    }
+
+    // MARK: - Sep38Test helpers
+
+    private func sep38vFullAnchor() -> Anchor {
+        return wallet.anchor(homeDomain: Sep38TestUtils.fullAnchorDomain)
+    }
+
+    private func sep38vAuthToken(for anchor: Anchor) async throws -> AuthToken {
+        let authKey = try SigningKeyPair(secretKey: Sep38TestUtils.userSecretSeed)
+        return try await anchor.sep10.authenticate(userKeyPair: authKey)
+    }
+
+    // MARK: - Sep38.swift validation and error branches
+
+    func testSep38PriceRequiresExactlyOneAmount() async throws {
+        let sep38 = try await sep38vFullAnchor().sep38(authToken: nil)
+        // both amounts -> error
+        do {
+            _ = try await sep38.price(context: "sep31",
+                                      sellAsset: "iso4217:BRL",
+                                      buyAsset: "stellar:USDC:G",
+                                      sellAmount: "1",
+                                      buyAmount: "1")
+            XCTFail("expected invalidArgument for both amounts")
+        } catch ValidationError.invalidArgument {
+            // expected
+        }
+        // neither amount -> error
+        do {
+            _ = try await sep38.price(context: "sep31",
+                                      sellAsset: "iso4217:BRL",
+                                      buyAsset: "stellar:USDC:G")
+            XCTFail("expected invalidArgument for no amount")
+        } catch ValidationError.invalidArgument {
+            // expected
+        }
+    }
+
+    func testSep38RequestQuoteRequiresExactlyOneAmount() async throws {
+        let token = try await sep38vAuthToken(for: sep38vFullAnchor())
+        let sep38 = try await sep38vFullAnchor().sep38(authToken: token)
+        do {
+            _ = try await sep38.requestQuote(context: "sep31",
+                                             sellAsset: "iso4217:BRL",
+                                             buyAsset: "stellar:USDC:G",
+                                             sellAmount: "1",
+                                             buyAmount: "1")
+            XCTFail("expected invalidArgument for both amounts")
+        } catch ValidationError.invalidArgument {
+            // expected
+        }
+    }
+
+    func testSep38RequestQuoteRequiresAuth() async throws {
+        // sep38 constructed without an auth token -> requestQuote rejected before any network call.
+        let sep38 = try await sep38vFullAnchor().sep38(authToken: nil)
+        do {
+            _ = try await sep38.requestQuote(context: "sep31",
+                                             sellAsset: "iso4217:BRL",
+                                             buyAsset: "stellar:USDC:G",
+                                             buyAmount: "100")
+            XCTFail("expected invalidArgument for missing auth")
+        } catch ValidationError.invalidArgument(let message) {
+            XCTAssertTrue(message.contains("authentication"))
+        }
+    }
+
+    func testSep38GetQuoteRequiresAuth() async throws {
+        let sep38 = try await sep38vFullAnchor().sep38(authToken: nil)
+        do {
+            _ = try await sep38.getQuote(quoteId: "abc")
+            XCTFail("expected invalidArgument for missing auth")
+        } catch ValidationError.invalidArgument(let message) {
+            XCTAssertTrue(message.contains("authentication"))
+        }
+    }
+
+    func testSep38InfoPermissionDenied() async throws {
+        let sep38 = try await sep38vFullAnchor().sep38(authToken: nil)
+        sep38vQuoteMock.infoStatusCode = 403
+        do {
+            _ = try await sep38.info
+            XCTFail("expected permissionDenied")
+        } catch QuoteServiceError.permissionDenied {
+            // expected
+        }
+    }
+
+    func testSep38InfoMalformedJson() async throws {
+        let sep38 = try await sep38vFullAnchor().sep38(authToken: nil)
+        sep38vQuoteMock.infoMalformed = true
+        do {
+            _ = try await sep38.info
+            XCTFail("expected parsingResponseFailed")
+        } catch QuoteServiceError.parsingResponseFailed {
+            // expected
+        }
+    }
+
+    func testSep38PriceBadRequest() async throws {
+        let sep38 = try await sep38vFullAnchor().sep38(authToken: nil)
+        sep38vQuoteMock.priceStatusCode = 400
+        do {
+            _ = try await sep38.price(context: "sep31",
+                                      sellAsset: "iso4217:BRL",
+                                      buyAsset: "stellar:USDC:G",
+                                      sellAmount: "100")
+            XCTFail("expected badRequest")
+        } catch QuoteServiceError.badRequest {
+            // expected
+        }
+    }
+
+    func testSep38GetQuoteNotFound() async throws {
+        let token = try await sep38vAuthToken(for: sep38vFullAnchor())
+        let sep38 = try await sep38vFullAnchor().sep38(authToken: token)
+        sep38vQuoteMock.quoteStatusCode = 404
+        do {
+            _ = try await sep38.getQuote(quoteId: "missing-quote")
+            XCTFail("expected notFound")
+        } catch QuoteServiceError.notFound {
+            // expected
+        }
+    }
+
+    // MARK: - QuotesResponse parsing optional-field coverage
+
+    func testSep38InfoOptionalFieldsAbsent() async throws {
+        let sep38 = try await sep38vFullAnchor().sep38(authToken: nil)
+        let info = try await sep38.info
+        XCTAssertEqual(1, info.assets.count)
+        let asset = info.assets[0]
+        XCTAssertEqual("stellar:USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN", asset.asset)
+        // No delivery methods / country codes in the minimal info mock.
+        XCTAssertNil(asset.sellDeliveryMethods)
+        XCTAssertNil(asset.buyDeliveryMethods)
+        XCTAssertNil(asset.countryCodes)
+    }
+
+    func testSep38PriceFeeWithoutDetails() async throws {
+        let sep38 = try await sep38vFullAnchor().sep38(authToken: nil)
+        let price = try await sep38.price(context: "sep31",
+                                          sellAsset: "iso4217:BRL",
+                                          buyAsset: "stellar:USDC:G",
+                                          sellAmount: "100")
+        XCTAssertEqual("1.00", price.totalPrice)
+        XCTAssertEqual("0.90", price.price)
+        XCTAssertEqual("100", price.sellAmount)
+        XCTAssertEqual("90", price.buyAmount)
+        XCTAssertEqual("0.00", price.fee.total)
+        XCTAssertEqual("stellar:USDC:G", price.fee.asset)
+        // fee details absent in this mock.
+        XCTAssertNil(price.fee.details)
+    }
+
     func testAll() async throws {
         let anchor = wallet.anchor(homeDomain: QuotesTestUtils.anchorDomain)
         let sep10 = try await anchor.sep10
@@ -445,6 +622,120 @@ class Sep38GetQuoteResponseMock: ResponsesMock {
           }
         ]
       }
+    }
+    """
+}
+
+final class Sep38TestUtils {
+
+    // Domain that resolves to a stellar.toml exposing SEP-24, SEP-10, KYC and quote services.
+    static let fullAnchorDomain = "full.sep38test.com"
+    // Domain whose stellar.toml only exposes a signing key (no services at all).
+    static let emptyAnchorDomain = "empty.sep38test.com"
+
+    static let apiHost = "api.sep38test.org"
+    static let webAuthEndpoint = "https://\(apiHost)/auth"
+
+    static let interactiveHost = "sep24.sep38test.org"
+    static let quoteHost = "sep38.sep38test.org"
+    static let kycHost = "sep12.sep38test.org"
+
+    static let interactiveServer = "https://\(interactiveHost)"
+    static let quoteServer = "http://\(quoteHost)/quotes-sep38"
+    static let kycServer = "http://\(kycHost)/kyc"
+
+    static let serverAccountId = "GBWMCCC3NHSKLAOJDBKKYW7SSH2PFTTNVFKWSGLWGDLEBKLOVP5JLBBP"
+    static let serverSecretSeed = "SAWDHXQG6ROJSU4QGCW7NSTYFHPTPIVC2NC7QKVTO7PZCSO2WEBGM54W"
+    static let userSecretSeed = "SBAYNYLQFXVLVAHW4BXDQYNJLMDQMZ5NQDDOHVJD3PTBAUIJRNRK5LGX"
+
+    static let serverKeypair = try! KeyPair(secretSeed: serverSecretSeed)
+
+    static let usdcAsset = try! IssuedAssetId(code: "USDC",
+                                              issuer: "GCZJM35NKGVK47BB4SPBDV25477PZYIYPVVG453LPYFNXLS3FGHDXOCM")
+}
+
+// MARK: - Namespaced mocks
+
+class Sep38TestQuoteMock: ResponsesMock {
+    var host: String
+    var infoStatusCode = 200
+    var infoMalformed = false
+    var priceStatusCode = 200
+    var quoteStatusCode = 200
+
+    init(host: String) {
+        self.host = host
+        super.init()
+    }
+
+    override func requestMock() -> RequestMock {
+        let handler: MockHandler = { [weak self] mock, request in
+            guard let self = self else { return nil }
+            let path = request.url?.path ?? ""
+            if path.hasSuffix("/info") {
+                if self.infoMalformed {
+                    mock.statusCode = 200
+                    return "{ not json"
+                }
+                mock.statusCode = self.infoStatusCode
+                if self.infoStatusCode != 200 {
+                    return "{\"error\": \"forbidden\"}"
+                }
+                return self.info
+            } else if path.hasSuffix("/price") {
+                mock.statusCode = self.priceStatusCode
+                if self.priceStatusCode != 200 {
+                    return "{\"error\": \"bad request\"}"
+                }
+                return self.price
+            } else if path.contains("/quote") {
+                mock.statusCode = self.quoteStatusCode
+                if self.quoteStatusCode != 200 {
+                    return "{\"error\": \"not found\"}"
+                }
+                return self.quote
+            }
+            mock.statusCode = 404
+            return "{\"error\": \"not found\"}"
+        }
+        // Matches /quotes-sep38/info, /quotes-sep38/price, /quotes-sep38/quote, /quotes-sep38/quote/{id}
+        return RequestMock(host: host,
+                           path: "*",
+                           httpMethod: "GET",
+                           mockHandler: handler)
+    }
+
+    // Minimal info: single asset, no optional arrays.
+    let info = """
+    {
+      "assets": [
+        { "asset": "stellar:USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN" }
+      ]
+    }
+    """
+
+    // Price with a fee that has no details array.
+    let price = """
+    {
+      "total_price": "1.00",
+      "price": "0.90",
+      "sell_amount": "100",
+      "buy_amount": "90",
+      "fee": { "total": "0.00", "asset": "stellar:USDC:G" }
+    }
+    """
+
+    let quote = """
+    {
+      "id": "q1",
+      "expires_at": "2021-04-30T07:42:23",
+      "total_price": "1.00",
+      "price": "0.90",
+      "sell_asset": "iso4217:BRL",
+      "sell_amount": "100",
+      "buy_asset": "stellar:USDC:G",
+      "buy_amount": "90",
+      "fee": { "total": "0.00", "asset": "iso4217:BRL" }
     }
     """
 }

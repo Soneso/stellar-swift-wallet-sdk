@@ -286,7 +286,10 @@ public class Sep6WithdrawInfo {
                     }
                     types![key] = nFields
                 } else {
-                    types![key] = nil
+                    // Keep the key with a nil value. Assigning nil through the
+                    // dictionary subscript would remove the entry, dropping a
+                    // supported type that simply declares no extra fields.
+                    types!.updateValue(nil, forKey: key)
                 }
             }
         }
@@ -349,7 +352,10 @@ public class Sep6WithdrawExchangeInfo {
                     }
                     types![key] = nFields
                 } else {
-                    types![key] = nil
+                    // Keep the key with a nil value. Assigning nil through the
+                    // dictionary subscript would remove the entry, dropping a
+                    // supported type that simply declares no extra fields.
+                    types!.updateValue(nil, forKey: key)
                 }
             }
         }
@@ -410,6 +416,8 @@ public class Sep6EndpointInfo {
     }
     
     internal convenience init(feeInfo: AnchorFeeInfo) {
+        // description is nil because the underlying iOS SDK AnchorFeeInfo does not
+        // decode the SEP-6 fee `description` field yet. See plans/todo.md.
         self.init(enabled: feeInfo.enabled,
                   authenticationRequired: feeInfo.authenticationRequired,
                   description: nil)

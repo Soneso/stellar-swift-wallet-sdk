@@ -1,6 +1,6 @@
 //
-//  StellarTest.swift
-//  
+//  StellarIntegrationTests.swift
+//
 //
 //  Created by Christian Rogobete on 20.09.24.
 //
@@ -9,7 +9,7 @@ import XCTest
 import stellarsdk
 @testable import stellar_wallet_sdk
 
-final class StellarTest: XCTestCase {
+final class StellarIntegrationTests: XCTestCase {
     let testMode = "testnet" // "mainnet"
     var wallet:Wallet!
     var accountKeyPair:SigningKeyPair!
