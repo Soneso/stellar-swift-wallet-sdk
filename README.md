@@ -1,7 +1,6 @@
 ![logo](./docs/images/wallet-sdk-logo.png)
 
-[![Tests](https://github.com/Soneso/stellar-swift-wallet-sdk/actions/workflows/tests.yml/badge.svg)](https://github.com/Soneso/stellar-swift-wallet-sdk/actions/workflows/tests.yml)
-[![codecov](https://codecov.io/gh/Soneso/stellar-swift-wallet-sdk/branch/main/graph/badge.svg)](https://codecov.io/gh/Soneso/stellar-swift-wallet-sdk)
+[![GitHub release](https://img.shields.io/github/v/release/Soneso/stellar-swift-wallet-sdk)](https://github.com/Soneso/stellar-swift-wallet-sdk/releases) [![Tests](https://github.com/Soneso/stellar-swift-wallet-sdk/actions/workflows/tests.yml/badge.svg)](https://github.com/Soneso/stellar-swift-wallet-sdk/actions/workflows/tests.yml) [![codecov](https://codecov.io/gh/Soneso/stellar-swift-wallet-sdk/branch/main/graph/badge.svg)](https://codecov.io/gh/Soneso/stellar-swift-wallet-sdk) [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Soneso/stellar-swift-wallet-sdk)
 
 The Stellar Swift Wallet SDK is a library that allows developers to build wallet applications on the Stellar Network faster. It
 utilizes the classic [iOS Stellar SDK](https://github.com/Soneso/stellar-ios-mac-sdk) to communicate with Stellar Horizon and Anchors.
@@ -153,6 +152,3 @@ The test suite is split into two targets:
 ## Example app
 
 [SwiftBasicPay](https://github.com/Soneso/SwiftBasicPay) is an open-source example iOS payment application that showcases how to integrate Stellar's powerful payment infrastructure into native Swift apps the using the Stellar Swift Wallet SDK and the classic iOS Stellar SDK.
-
-## DeepWiki
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Soneso/stellar-swift-wallet-sdk)
