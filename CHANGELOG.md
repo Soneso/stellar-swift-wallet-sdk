@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.3 - 2026-08-04
+
+### Changed
+- Updated the `stellar-ios-mac-sdk` dependency to 3.8.1, which adds the CAP-0083 and CAP-0085 XDR definitions and hardens mnemonic generation (fails closed if secure random generation is unavailable).
+
 ## 0.9.2 - 2026-06-25
 
 ### Changed
