@@ -11,7 +11,7 @@ import stellarsdk
 public class Wallet {
     
     /// version number of the wallet sdk.
-    public static var versionNumber:String = "0.9.3"
+    public static var versionNumber:String = "0.9.4"
     
     /// Configuration for all Stellar-related activity.
     public var stellarConfig:StellarConfig

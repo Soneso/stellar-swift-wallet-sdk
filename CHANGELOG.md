@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.4 - 2026-08-25
+
+### Changed
+- Updated the `stellar-ios-mac-sdk` dependency to 3.10.0, which supports Protocol 28 (CAP-85 external references, Horizon v28.0.0).
+- Strkey handling follows SEP-23 strictly (validated by `stellar-ios-mac-sdk`): corrupted or wrong-width account ids and secret seeds now throw at key pair construction instead of decoding silently.
+- SEP-6: the fee request sends the amount as a plain decimal string; whole amounts carry no fractional part and one stroop goes out as `0.0000001`, no longer in scientific notation (fixed in `stellar-ios-mac-sdk`).
+
 ## 0.9.3 - 2026-08-04
 
 ### Changed
