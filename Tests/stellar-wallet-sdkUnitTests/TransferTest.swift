@@ -2048,8 +2048,10 @@ class Sep6CovFeeResponseMock: ResponsesMock {
 
     override func requestMock() -> RequestMock {
         let handler: MockHandler = { [weak self] mock, request in
+            // The fee request renders the amount as a plain decimal; whole
+            // amounts carry no fractional part, so 100.0 goes out as "100".
             let amount = mock.variables["amount"]
-            if amount == "100.0" {
+            if amount == "100" {
                 mock.statusCode = 200
                 return "{\"fee\": 5.0}"
             }
