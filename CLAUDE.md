@@ -22,7 +22,7 @@ swift test --filter AuthTest
 
 # Run integration tests with required Docker services
 docker-compose -f Tests/docker-compose.test.yml up -d
-swift test --filter stellar_wallet_sdkIntegrationTests
+SKIP_DOCKER_STARTUP=1 swift test --filter stellar_wallet_sdkIntegrationTests
 
 # List all available tests
 swift test --list-tests
@@ -73,6 +73,8 @@ The integration tests require Docker services defined in `Tests/docker-compose.t
 - Web authentication servers (ports 8001, 8003)
 - PostgreSQL databases for persistence
 
+When the Docker services are started manually before running the tests, set `SKIP_DOCKER_STARTUP=1`. Without it, the test harness's `DockerManager` starts its own compose project (`stellar-wallet-test`), which collides on the ports with the manually started one; its startup then fails and the tests that call `requireDocker()` are silently skipped.
+
 ### Key Design Patterns
 
 1. **Singleton Wallet Pattern**: The `Wallet` class is designed to be used as a singleton across the application
@@ -95,6 +97,6 @@ The SDK implements the following Stellar Ecosystem Proposals:
 
 ## Dependencies
 
-- **stellarsdk**: The underlying iOS Stellar SDK (v3.10.0+, Protocol 28)
+- **stellarsdk**: The underlying iOS Stellar SDK (v3.11.0+, Protocol 28)
 - **Swift 5.10+**: Minimum Swift version requirement
 - **Platform Support**: iOS 13+, macOS 10.15+
