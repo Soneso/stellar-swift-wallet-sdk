@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.5 - 2026-09-15
+
+### Changed
+- Updated the `stellar-ios-mac-sdk` dependency to 3.11.0, which adds `SCValXDR.toNative()` and `SCAddressXDR.toStrKey()`, accepts an injected `URLSession` in the Soroban client layer, and carries the stellar-xdr `c40231c` definitions. All additions are opt-in; the wallet API and behavior are unchanged.
+
 ## 0.9.4 - 2026-08-25
 
 ### Changed
