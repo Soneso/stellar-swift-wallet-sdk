@@ -28,6 +28,10 @@ final class StellarTest: XCTestCase {
     var destinationKp: SigningKeyPair!
     /// An account that does NOT exist on the (mocked) network (served a 404).
     var missingKp: SigningKeyPair!
+    /// An existing account whose `config.memo_required` data entry is set (SEP-29).
+    var memoRequiredKp: SigningKeyPair!
+    /// An account whose Horizon lookup fails with a 500 internal server error.
+    var lookupFailureKp: SigningKeyPair!
     /// Asset issuer.
     var issuerKp: SigningKeyPair!
     /// USDC issued asset, issued by issuerKp.
@@ -35,6 +39,8 @@ final class StellarTest: XCTestCase {
 
     var sourceAccountMock: StellarUnitHorizonAccountMock!
     var destinationAccountMock: StellarUnitHorizonAccountMock!
+    var memoRequiredAccountMock: StellarUnitHorizonAccountMock!
+    var lookupFailureAccountMock: StellarUnitHorizonAccountErrorMock!
     var notFoundMock: StellarUnitHorizonNotFoundMock!
 
     override func setUp() {
@@ -45,6 +51,8 @@ final class StellarTest: XCTestCase {
         sourceKp = wallet.stellar.account.createKeyPair()
         destinationKp = wallet.stellar.account.createKeyPair()
         missingKp = wallet.stellar.account.createKeyPair()
+        memoRequiredKp = wallet.stellar.account.createKeyPair()
+        lookupFailureKp = wallet.stellar.account.createKeyPair()
         issuerKp = wallet.stellar.account.createKeyPair()
         usdc = try! IssuedAssetId(code: "USDC", issuer: issuerKp.address)
 
@@ -57,6 +65,13 @@ final class StellarTest: XCTestCase {
             accountId: destinationKp.address,
             sequence: "100",
             signers: [StellarUnitHorizonSigner(key: destinationKp.address, weight: 1)])
+        // "MQ==" is the base64 encoding of "1", the SEP-29 memo-required flag value.
+        memoRequiredAccountMock = StellarUnitHorizonAccountMock(
+            accountId: memoRequiredKp.address,
+            sequence: "200",
+            signers: [StellarUnitHorizonSigner(key: memoRequiredKp.address, weight: 1)],
+            data: ["config.memo_required": "MQ=="])
+        lookupFailureAccountMock = StellarUnitHorizonAccountErrorMock(accountId: lookupFailureKp.address)
 
         notFoundMock = StellarUnitHorizonNotFoundMock()
     }
@@ -693,6 +708,49 @@ final class StellarTest: XCTestCase {
         }
     }
 
+    func testSubmitTransactionMemoRequiredThrows() async throws {
+        let tx = try (await sourceTxBuilder())
+            .transfer(destinationAddress: memoRequiredKp.address, assetId: NativeAssetId(), amount: Decimal(1))
+            .build()
+        wallet.stellar.sign(tx: tx, keyPair: sourceKp)
+
+        let submitMock = StellarUnitSubmitSuccessMock(envelopeXdr: nil, sourceAccountId: sourceKp.address)
+        defer { ServerMock.remove(mock: submitMock.requestMock()) }
+
+        do {
+            _ = try await wallet.stellar.submitTransaction(signedTransaction: tx)
+            XCTFail("expected submitTransaction to throw for a memo-required destination")
+        } catch {
+            assertMemoRequiredError(error, accountId: memoRequiredKp.address)
+        }
+        XCTAssertEqual(0, submitMock.postCount)
+    }
+
+    func testSubmitTransactionMemoRequiredWithMemoSucceeds() async throws {
+        let tx = try (await sourceTxBuilder(memo: stellarsdk.Memo(text: "x")))
+            .transfer(destinationAddress: memoRequiredKp.address, assetId: NativeAssetId(), amount: Decimal(1))
+            .build()
+        wallet.stellar.sign(tx: tx, keyPair: sourceKp)
+
+        let submitMock = StellarUnitSubmitSuccessMock(envelopeXdr: nil, sourceAccountId: sourceKp.address)
+        defer { ServerMock.remove(mock: submitMock.requestMock()) }
+
+        let result = try await wallet.stellar.submitTransaction(signedTransaction: tx)
+        XCTAssertTrue(result)
+        XCTAssertEqual(1, submitMock.postCount)
+    }
+
+    /// Asserts that the wallet reported a SEP-29 memo-required destination for the given account.
+    private func assertMemoRequiredError(_ error: Error,
+                                         accountId: String,
+                                         file: StaticString = #filePath,
+                                         line: UInt = #line) {
+        guard case ValidationError.invalidArgument(let message) = error else {
+            return XCTFail("expected ValidationError.invalidArgument, got \(error)", file: file, line: line)
+        }
+        XCTAssertEqual("account \(accountId) requires memo", message, file: file, line: line)
+    }
+
     func testSubmitWithFeeIncreaseSuccess() async throws {
         // The fee increase path only triggers on a 504 timeout; a direct success is the
         // common case and is what we assert here. The success mock echoes back the posted
@@ -771,7 +829,7 @@ final class StellarTest: XCTestCase {
     }
 
     func testSubmitFeeBumpTransactionSuccess() async throws {
-        let inner = try (await sourceTxBuilder(memo: stellarsdk.Memo(text: "x")))
+        let inner = try (await sourceTxBuilder())
             .transfer(destinationAddress: destinationKp.address, assetId: NativeAssetId(), amount: Decimal(1))
             .build()
         wallet.stellar.sign(tx: inner, keyPair: sourceKp)
@@ -779,12 +837,77 @@ final class StellarTest: XCTestCase {
         let feeBump = try wallet.stellar.makeFeeBump(feeAddress: feeAccount, transaction: inner, baseFee: 200)
         wallet.stellar.sign(feeBumpTx: feeBump, keyPair: feeAccount)
 
-        // submitFeeBumpTransaction bypasses the SEP-29 check (postTransactionCore), any envelope is accepted.
+        // The destination exists without the memo-required entry, so the SEP-29 lookup passes and
+        // the fee bump is posted. The success mock decodes the posted envelope.
         let submitMock = StellarUnitSubmitSuccessMock(envelopeXdr: nil, sourceAccountId: feeAccount.address)
         defer { ServerMock.remove(mock: submitMock.requestMock()) }
 
         let result = try await wallet.stellar.submitTransaction(signedFeeBumpTransaction: feeBump)
         XCTAssertTrue(result)
+        XCTAssertEqual(1, destinationAccountMock.getCount)
+        XCTAssertEqual(1, submitMock.postCount)
+    }
+
+    func testSubmitFeeBumpTransactionDestinationLookupFailureThrows() async throws {
+        let inner = try (await sourceTxBuilder())
+            .transfer(destinationAddress: lookupFailureKp.address, assetId: NativeAssetId(), amount: Decimal(1))
+            .build()
+        wallet.stellar.sign(tx: inner, keyPair: sourceKp)
+        let feeAccount = wallet.stellar.account.createKeyPair()
+        let feeBump = try wallet.stellar.makeFeeBump(feeAddress: feeAccount, transaction: inner, baseFee: 200)
+        wallet.stellar.sign(feeBumpTx: feeBump, keyPair: feeAccount)
+
+        let submitMock = StellarUnitSubmitSuccessMock(envelopeXdr: nil, sourceAccountId: feeAccount.address)
+        defer { ServerMock.remove(mock: submitMock.requestMock()) }
+
+        do {
+            _ = try await wallet.stellar.submitTransaction(signedFeeBumpTransaction: feeBump)
+            XCTFail("expected the fee bump submission to throw when the destination lookup fails")
+        } catch let error as HorizonRequestError {
+            guard case .internalServerError = error else {
+                return XCTFail("expected HorizonRequestError.internalServerError, got \(error)")
+            }
+        }
+        XCTAssertEqual(1, lookupFailureAccountMock.getCount)
+        XCTAssertEqual(0, submitMock.postCount)
+    }
+
+    func testSubmitFeeBumpTransactionMemoRequiredThrows() async throws {
+        let inner = try (await sourceTxBuilder())
+            .transfer(destinationAddress: memoRequiredKp.address, assetId: NativeAssetId(), amount: Decimal(1))
+            .build()
+        wallet.stellar.sign(tx: inner, keyPair: sourceKp)
+        let feeAccount = wallet.stellar.account.createKeyPair()
+        let feeBump = try wallet.stellar.makeFeeBump(feeAddress: feeAccount, transaction: inner, baseFee: 200)
+        wallet.stellar.sign(feeBumpTx: feeBump, keyPair: feeAccount)
+
+        let submitMock = StellarUnitSubmitSuccessMock(envelopeXdr: nil, sourceAccountId: feeAccount.address)
+        defer { ServerMock.remove(mock: submitMock.requestMock()) }
+
+        do {
+            _ = try await wallet.stellar.submitTransaction(signedFeeBumpTransaction: feeBump)
+            XCTFail("expected the fee bump submission to throw for a memo-required destination")
+        } catch {
+            assertMemoRequiredError(error, accountId: memoRequiredKp.address)
+        }
+        XCTAssertEqual(0, submitMock.postCount)
+    }
+
+    func testSubmitFeeBumpTransactionMemoRequiredWithMemoSucceeds() async throws {
+        let inner = try (await sourceTxBuilder(memo: stellarsdk.Memo(text: "x")))
+            .transfer(destinationAddress: memoRequiredKp.address, assetId: NativeAssetId(), amount: Decimal(1))
+            .build()
+        wallet.stellar.sign(tx: inner, keyPair: sourceKp)
+        let feeAccount = wallet.stellar.account.createKeyPair()
+        let feeBump = try wallet.stellar.makeFeeBump(feeAddress: feeAccount, transaction: inner, baseFee: 200)
+        wallet.stellar.sign(feeBumpTx: feeBump, keyPair: feeAccount)
+
+        let submitMock = StellarUnitSubmitSuccessMock(envelopeXdr: nil, sourceAccountId: feeAccount.address)
+        defer { ServerMock.remove(mock: submitMock.requestMock()) }
+
+        let result = try await wallet.stellar.submitTransaction(signedFeeBumpTransaction: feeBump)
+        XCTAssertTrue(result)
+        XCTAssertEqual(1, submitMock.postCount)
     }
 
     // MARK: - decode / encode
@@ -1070,17 +1193,26 @@ class StellarUnitHorizonAccountMock: ResponsesMock {
     let accountId: String
     let sequence: String
     let signers: [StellarUnitHorizonSigner]
+    /// Account data entries, name to base64 encoded value.
+    let data: [String: String]
+    /// Number of GET requests this mock has served.
+    private(set) var getCount = 0
 
-    init(accountId: String, sequence: String, signers: [StellarUnitHorizonSigner]) {
+    init(accountId: String,
+         sequence: String,
+         signers: [StellarUnitHorizonSigner],
+         data: [String: String] = [:]) {
         self.accountId = accountId
         self.sequence = sequence
         self.signers = signers
+        self.data = data
         super.init()
     }
 
     override func requestMock() -> RequestMock {
         let handler: MockHandler = { [weak self] mock, request in
             guard let self = self else { return nil }
+            self.getCount += 1
             mock.statusCode = 200
             return self.accountJson()
         }
@@ -1099,6 +1231,9 @@ class StellarUnitHorizonAccountMock: ResponsesMock {
               "type": "ed25519_public_key"
             }
             """
+        }.joined(separator: ",")
+        let dataJson = data.sorted { $0.key < $1.key }.map { entry in
+            "\"\(entry.key)\": \"\(entry.value)\""
         }.joined(separator: ",")
 
         return """
@@ -1141,12 +1276,45 @@ class StellarUnitHorizonAccountMock: ResponsesMock {
           "signers": [
             \(signersJson)
           ],
-          "data": {},
+          "data": {\(dataJson)},
           "num_sponsoring": 0,
           "num_sponsored": 0,
           "paging_token": "\(accountId)"
         }
         """
+    }
+}
+
+/// Mocks GET https://horizon-testnet.stellar.org/accounts/{accountId} returning a Horizon
+/// 500 internal server error.
+class StellarUnitHorizonAccountErrorMock: ResponsesMock {
+    let accountId: String
+    /// Number of GET requests this mock has served.
+    private(set) var getCount = 0
+
+    init(accountId: String) {
+        self.accountId = accountId
+        super.init()
+    }
+
+    override func requestMock() -> RequestMock {
+        let handler: MockHandler = { [weak self] mock, request in
+            guard let self = self else { return nil }
+            self.getCount += 1
+            mock.statusCode = 500
+            return """
+            {
+              "type": "https://stellar.org/horizon-errors/server_error",
+              "title": "Internal Server Error",
+              "status": 500,
+              "detail": "An error occurred while processing this request."
+            }
+            """
+        }
+        return RequestMock(host: StellarTest.horizonHost,
+                           path: "/accounts/\(accountId)",
+                           httpMethod: "GET",
+                           mockHandler: handler)
     }
 }
 
@@ -1172,6 +1340,8 @@ class StellarUnitSubmitSuccessMock: ResponsesMock {
     let envelopeXdr: String?
     let sourceAccountId: String
     private var sharedMock: RequestMock?
+    /// Number of POST /transactions requests this mock has served.
+    private(set) var postCount = 0
 
     /// txSUCCESS TransactionResult (fee_charged 100, one op_inner payment success).
     static let resultXdr = "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA="
@@ -1188,6 +1358,7 @@ class StellarUnitSubmitSuccessMock: ResponsesMock {
         }
         let handler: MockHandler = { [weak self] mock, request in
             guard let self = self else { return nil }
+            self.postCount += 1
             mock.statusCode = 200
             let envelope = self.envelopeXdr ?? self.envelopeFrom(request: request) ?? ""
             return self.submitJson(envelope: envelope)

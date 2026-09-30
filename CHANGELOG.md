@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.6 - 2026-10-01
+
+### Changed
+- Updated the `stellar-ios-mac-sdk` dependency to 3.12.0, which runs the SEP-29 memo check on fee bump submissions and hardens XDR decoding.
+- `Stellar.submitTransaction(signedFeeBumpTransaction:)` runs the SEP-29 memo check against the inner transaction. If the inner transaction has no memo and a payment, path payment or account merge destination requires one, the method throws `ValidationError.invalidArgument` ("account <id> requires memo") and does not submit, as `submitTransaction(signedTransaction:)` already did. Unless the inner transaction has a memo, the submission first loads the `G...` destination accounts of these operations from Horizon, once per account, and stops at the first one that requires a memo. A lookup failure other than 404 is handled like a failed submission: a timeout is retried and any other error is thrown as a `HorizonRequestError`. In 0.9.5 fee bump submissions were posted without the check.
+- XDR that does not follow the Stellar XDR definitions is rejected: a non-zero `reserved` field in a fee bump or V0 envelope, and unknown public key or muxed account key types. For such input `Stellar.decodeTransaction` returns `.invalidXdrErr`, `Sep7.isValidSep7Url` and `Sep7.parseSep7Uri` reject the `xdr` parameter, and `Sep10.authenticate` throws `GetJWTTokenError.parsingError` for such a challenge. In 0.9.5 these envelopes decoded. Oversized array counts and length prefixes are rejected before memory is reserved. `Stellar.decodeTransaction` still returns `.invalidXdrErr`, and SEP-7 still reports invalid input. For a SEP-10 challenge, `GetJWTTokenError.parsingError` now carries `StellarSDKError.xdrDecodingError` for a count rejected by the new guard; in 0.9.5 it carried `XDRDecoder.Error.prematureEndOfData`. Later truncated reads can still produce `prematureEndOfData`. Envelopes that follow the definitions decode as before.
+
 ## 0.9.5 - 2026-09-15
 
 ### Changed
