@@ -101,10 +101,14 @@ public class Stellar {
     }
     
     /// Submits a signed transaction to the server. If the submission fails with status 504 indicating a timeout error, it will automatically retry.
-    /// Retruns `true` if the transaction was successfully submitted.
+    /// Returns `true` if the transaction was successfully submitted.
     ///
-    /// This function throws a horizon request error (stellarsdk.HorizonRequestError) if any error occured while sending the transaction to the stellar network.
-    /// It can also throw a validation error (ValidationError.invalidArgument) if the destination requires a memo but no memo was found in the transaction.
+    /// Before posting, the SEP-29 memo check runs: unless the transaction has a memo, the `G...` destination accounts of its
+    /// payment, path payment and account merge operations are loaded from Horizon, stopping at the first one that requires a memo.
+    /// If a destination requires a memo, this function throws a validation error (`ValidationError.invalidArgument`) and the transaction is not posted.
+    ///
+    /// This function throws a horizon request error (`stellarsdk.HorizonRequestError`) if a destination lookup fails (a 404 counts as
+    /// no memo required), or if any error occurs while sending the transaction to the stellar network. A timeout of either request is retried.
     ///
     /// - Parameter signedTransaction: The signed transaction to submit.
     ///
@@ -127,10 +131,15 @@ public class Stellar {
     }
     
     /// Submits a signed fee bump transaction to the server. If the submission fails with status 504 indicating a timeout error, it will automatically retry.
-    /// Retruns `true` if the transaction was successfully submitted.
+    /// Returns `true` if the transaction was successfully submitted.
     ///
-    /// This function throws a horizon request error (stellarsdk.HorizonRequestError) if any error occured while sending the transaction to the stellar network.
-    /// It can also throw a validation error (ValidationError.invalidArgument) if the destination requires a memo but no memo was found in the transaction.
+    /// Before posting, the SEP-29 memo check runs against the inner transaction: unless the inner transaction has a memo, the `G...` destination
+    /// accounts of its payment, path payment and account merge operations are loaded from Horizon, stopping at the first one that requires a memo.
+    /// If a destination requires a memo, this function throws a validation error (`ValidationError.invalidArgument`) and the fee bump transaction is not posted.
+    /// To send to such a destination, rebuild and sign the inner transaction with a memo, then create and sign a new fee bump transaction.
+    ///
+    /// This function throws a horizon request error (`stellarsdk.HorizonRequestError`) if a destination lookup fails (a 404 counts as
+    /// no memo required), or if any error occurs while sending the transaction to the stellar network. A timeout of either request is retried.
     ///
     /// - Parameter signedTransaction: The signed fee bump transaction to submit.
     ///
