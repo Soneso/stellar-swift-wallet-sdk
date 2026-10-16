@@ -451,6 +451,22 @@ final class UriTest: XCTestCase {
         XCTAssertEqual(Sep7OperationType.tx, result.operationType)
     }
 
+    func testTxLiquidityPoolShareOrdersIssuersByPublicKeyBytes() throws {
+        let keyOrder = try StellarTest.poolShareChangeTrustEnvelope(sourceAccountId: s7ValidAccount,
+                                                                    firstIssuer: StellarTest.poolIssuerX,
+                                                                    secondIssuer: StellarTest.poolIssuerY)
+        let accepted = Sep7.isValidSep7Url(uri: "web+stellar:tx?xdr=\(encoded(keyOrder))")
+        XCTAssertTrue(accepted.result)
+        XCTAssertEqual(Sep7OperationType.tx, accepted.operationType)
+
+        let reversed = try StellarTest.poolShareChangeTrustEnvelope(sourceAccountId: s7ValidAccount,
+                                                                    firstIssuer: StellarTest.poolIssuerY,
+                                                                    secondIssuer: StellarTest.poolIssuerX)
+        let rejected = Sep7.isValidSep7Url(uri: "web+stellar:tx?xdr=\(encoded(reversed))")
+        XCTAssertFalse(rejected.result)
+        XCTAssertEqual("Invalid 'xdr' parameter value", rejected.reason)
+    }
+
     func testTxUnsupportedDestinationParameter() {
         let uri = "web+stellar:tx?xdr=\(encoded(s7ClassicTxXdr))&destination=\(s7ValidAccount)"
         let result = Sep7.isValidSep7Url(uri: uri)
