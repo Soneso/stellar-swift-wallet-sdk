@@ -949,6 +949,47 @@ final class StellarTest: XCTestCase {
         }
     }
 
+    /// Issuers of two `USDC` assets whose raw public keys and strkey texts sort in opposite
+    /// orders: the first key byte is 0x68 for `poolIssuerX` and 0x74 for `poolIssuerY`, while
+    /// the strkey text of `poolIssuerY` sorts first.
+    static let poolIssuerX = "GBUACAQDAQCQMBYIBEFAWDANBYHRAEISCMKBKFQXDAMRUGY4DUPB6CLH"
+    static let poolIssuerY = "GB2ACAQDAQCQMBYIBEFAWDANBYHRAEISCMKBKFQXDAMRUGY4DUPB7BZ4"
+
+    /// Returns a base64 v1 envelope with one change trust operation for the liquidity pool share
+    /// of `USDC:firstIssuer` and `USDC:secondIssuer` in this order, with fee 30. The envelope is
+    /// built from XDR because `ChangeTrustAsset` refuses a pair in the wrong order.
+    static func poolShareChangeTrustEnvelope(sourceAccountId: String, firstIssuer: String,
+                                             secondIssuer: String) throws -> String {
+        let assetA = try XCTUnwrap(Asset(canonicalForm: "USDC:\(firstIssuer)")).toXDR()
+        let assetB = try XCTUnwrap(Asset(canonicalForm: "USDC:\(secondIssuer)")).toXDR()
+        let poolShare = ChangeTrustAssetXDR.poolShare(.constantProduct(
+            LiquidityPoolConstantProductParametersXDR(assetA: assetA, assetB: assetB, fee: 30)))
+        let operation = OperationXDR(body: .changeTrustOp(ChangeTrustOperationXDR(asset: poolShare, limit: Int64.max)))
+        let tx = TransactionXDR(sourceAccount: try KeyPair(accountId: sourceAccountId).publicKey, seqNum: 1,
+                                cond: .none, memo: .none, operations: [operation])
+        return try XCTUnwrap(TransactionEnvelopeXDR.v1(TransactionV1EnvelopeXDR(tx: tx, signatures: [])).xdrEncoded)
+    }
+
+    func testDecodeLiquidityPoolShareOrdersIssuersByPublicKeyBytes() throws {
+        let keyOrder = try Self.poolShareChangeTrustEnvelope(sourceAccountId: sourceKp.address,
+                                                             firstIssuer: Self.poolIssuerX,
+                                                             secondIssuer: Self.poolIssuerY)
+        if case .transaction(let tx) = wallet.stellar.decodeTransaction(xdr: keyOrder) {
+            let changeTrust = try XCTUnwrap(tx.operations.first as? ChangeTrustOperation)
+            XCTAssertEqual(Self.poolIssuerX, changeTrust.asset.assetA?.issuer?.accountId)
+            XCTAssertEqual(Self.poolIssuerY, changeTrust.asset.assetB?.issuer?.accountId)
+        } else {
+            XCTFail("expected the pool share with issuer X first to decode")
+        }
+
+        let reversed = try Self.poolShareChangeTrustEnvelope(sourceAccountId: sourceKp.address,
+                                                             firstIssuer: Self.poolIssuerY,
+                                                             secondIssuer: Self.poolIssuerX)
+        guard case .invalidXdrErr = wallet.stellar.decodeTransaction(xdr: reversed) else {
+            return XCTFail("expected invalidXdrErr for the pool share with issuer Y first")
+        }
+    }
+
     func testTransactionEnvelopeRoundTrip() async throws {
         let tx = try (await sourceTxBuilder())
             .createAccount(newAccount: destinationKp, startingBalance: Decimal(3))

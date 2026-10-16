@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.7 - 2026-10-16
+
+### Changed
+- The wallet depends on `stellar-ios-mac-sdk` 3.13.0, which adds muxed contract addresses (`W...`, CAP-0084), the ML-DSA cost types (CAP-0087) and millisecond ledger close times (CAP-0088) to the XDR definitions.
+- Envelopes that carry a muxed contract address decode with `Stellar.decodeTransaction` and pass the SEP-7 `xdr` check. In 0.9.6 they returned `.invalidXdrErr`.
+
+### Fixed
+- `Stellar.decodeTransaction` validates the order of the two credit assets of a liquidity pool share as stellar-core does: by type, then code, then the issuers' raw 32-byte public key bytes. An envelope in that order decodes, and the reversed pair returns `.invalidXdrErr`. SEP-7 validation and parsing of the `xdr` parameter follow the same rule. In 0.9.6 the issuers were compared as strkey text, so some correctly ordered pool shares failed to decode.
+
 ## 0.9.6 - 2026-10-01
 
 ### Changed
