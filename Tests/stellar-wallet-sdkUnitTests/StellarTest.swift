@@ -970,6 +970,27 @@ final class StellarTest: XCTestCase {
         return try XCTUnwrap(TransactionEnvelopeXDR.v1(TransactionV1EnvelopeXDR(tx: tx, signatures: [])).xdrEncoded)
     }
 
+    /// Returns a base64 v1 envelope from `sourceAccountId` with the sequence number `seqNum` and one
+    /// operation of `body`. The envelope is built from XDR because the SDK refuses invalid asset
+    /// codes and a sequence number that no account sequence number precedes.
+    static func singleOperationEnvelope(sourceAccountId: String, body: OperationBodyXDR,
+                                        seqNum: Int64 = 1) throws -> String {
+        let tx = TransactionXDR(sourceAccount: try KeyPair(accountId: sourceAccountId).publicKey, seqNum: seqNum,
+                                cond: .none, memo: .none, operations: [OperationXDR(body: body)])
+        return try tx.encodedEnvelope()
+    }
+
+    /// Returns a payment of 100 stroops of `asset` to `accountId`.
+    static func paymentBody(to accountId: String, asset: AssetXDR) throws -> OperationBodyXDR {
+        .paymentOp(PaymentOperationXDR(destination: .ed25519(try KeyPair(accountId: accountId).publicKey.bytes),
+                                       asset: asset, amount: 100))
+    }
+
+    /// Returns an `alphanum4` asset of `issuerAccountId` with the raw code bytes `code`.
+    static func alphanum4(_ code: [UInt8], issuer issuerAccountId: String) throws -> AssetXDR {
+        .alphanum4(Alpha4XDR(assetCode: WrappedData4(Data(code)), issuer: try KeyPair(accountId: issuerAccountId).publicKey))
+    }
+
     func testDecodeLiquidityPoolShareOrdersIssuersByPublicKeyBytes() throws {
         let keyOrder = try Self.poolShareChangeTrustEnvelope(sourceAccountId: sourceKp.address,
                                                              firstIssuer: Self.poolIssuerX,
@@ -988,6 +1009,60 @@ final class StellarTest: XCTestCase {
         guard case .invalidXdrErr = wallet.stellar.decodeTransaction(xdr: reversed) else {
             return XCTFail("expected invalidXdrErr for the pool share with issuer Y first")
         }
+    }
+
+    func testDecodeReturnsInvalidXdrErrForInvalidAssetCodes() throws {
+        let issuer = destinationKp.address
+        let code12 = Data("ABC".utf8) + Data(repeating: 0, count: 9)
+        let invalidAssets: [(String, AssetXDR)] = [
+            ("alphanum4 of NUL bytes", try Self.alphanum4([0, 0, 0, 0], issuer: issuer)),
+            ("alphanum4 of 0xFF bytes", try Self.alphanum4([0xFF, 0xFF, 0xFF, 0xFF], issuer: issuer)),
+            ("alphanum12 ABC", .alphanum12(Alpha12XDR(assetCode: WrappedData12(code12),
+                                                      issuer: try KeyPair(accountId: issuer).publicKey))),
+        ]
+        func payment(_ asset: AssetXDR) throws -> String {
+            try Self.singleOperationEnvelope(sourceAccountId: sourceKp.address,
+                                             body: try Self.paymentBody(to: issuer, asset: asset))
+        }
+        func feeBump(_ envelope: String) throws -> String {
+            guard case .v1(let inner) = try TransactionEnvelopeXDR(xdr: envelope) else {
+                throw ValidationError.invalidArgument(message: "expected a v1 envelope")
+            }
+            return try FeeBumpTransactionXDR(sourceAccount: .ed25519(try KeyPair(accountId: issuer).publicKey.bytes),
+                                             innerTx: .v1(inner), fee: 200).encodedEnvelope()
+        }
+        for (name, asset) in invalidAssets {
+            guard case .invalidXdrErr = wallet.stellar.decodeTransaction(xdr: try payment(asset)) else {
+                return XCTFail("expected invalidXdrErr for a payment of \(name)")
+            }
+        }
+        let nulCodeFeeBump = try feeBump(try payment(invalidAssets[0].1))
+        guard case .invalidXdrErr = wallet.stellar.decodeTransaction(xdr: nulCodeFeeBump) else {
+            return XCTFail("expected invalidXdrErr for a fee bump whose inner payment has a code of NUL bytes")
+        }
+
+        let usd = try payment(try Self.alphanum4(Array("USD".utf8) + [0], issuer: issuer))
+        guard case .transaction(let tx) = wallet.stellar.decodeTransaction(xdr: usd) else {
+            return XCTFail("expected the payment of USD to decode")
+        }
+        XCTAssertEqual("USD", try XCTUnwrap(tx.operations.first as? PaymentOperation).asset.code)
+        guard case .feeBumpTransaction = wallet.stellar.decodeTransaction(xdr: try feeBump(usd)) else {
+            return XCTFail("expected the fee bump of the payment of USD to decode")
+        }
+    }
+
+    func testDecodeReturnsInvalidXdrErrForSequenceNumberInt64Min() throws {
+        let payment = try Self.paymentBody(to: destinationKp.address, asset: .native)
+        let minimum = try Self.singleOperationEnvelope(sourceAccountId: sourceKp.address, body: payment, seqNum: Int64.min)
+        guard case .invalidXdrErr = wallet.stellar.decodeTransaction(xdr: minimum) else {
+            return XCTFail("expected invalidXdrErr for the sequence number Int64.min")
+        }
+
+        let valid = try Self.singleOperationEnvelope(sourceAccountId: sourceKp.address, body: payment, seqNum: 42)
+        guard case .transaction(let tx) = wallet.stellar.decodeTransaction(xdr: valid) else {
+            return XCTFail("expected the sequence number 42 to decode")
+        }
+        XCTAssertEqual(42, tx.sourceAccount.sequenceNumber)
     }
 
     func testTransactionEnvelopeRoundTrip() async throws {

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.8 - 2026-10-25
+
+### Changed
+- The wallet depends on `stellar-ios-mac-sdk` 3.14.0, which reads the muxed destination of Horizon 30 contract credited effects and refuses muxed contract addresses (`W...`) where a Soroban call needs a contract address.
+
+### Fixed
+- `Stellar.decodeTransaction` returns `.invalidXdrErr` for an envelope whose sequence number is `Int64.min`. It returns the same when a payment, path payment, offer, clawback, or set trustline flags operation holds an asset code that is empty, too short for its type, or not UTF-8. Both checks also cover the inner transaction of a fee bump envelope. SEP-7 validation and parsing of the `xdr` parameter reject such envelopes. In 0.9.7 decoding such an envelope crashed the app.
+- The stellar.toml loads of `Anchor`, `Sep10.authenticate` with a client domain, and `Recovery.sep10Auth` run asynchronously. They throw `TomlFileError.invalidToml` after 30 seconds and for a file larger than 100 KB (102,400 bytes, the SEP-1 limit). `Sep7.isValidSep7SignedUrl` reports "Invalid toml at origin domain" in these cases. In 0.9.7 the load blocked a thread until the download ended and accepted files of any size.
+
 ## 0.9.7 - 2026-10-16
 
 ### Changed

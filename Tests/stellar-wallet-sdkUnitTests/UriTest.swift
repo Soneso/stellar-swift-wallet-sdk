@@ -467,6 +467,31 @@ final class UriTest: XCTestCase {
         XCTAssertEqual("Invalid 'xdr' parameter value", rejected.reason)
     }
 
+    func testTxRejectsInvalidAssetCodeAndSequenceNumberInt64Min() throws {
+        func payment(_ asset: AssetXDR, seqNum: Int64 = 1) throws -> String {
+            try StellarTest.singleOperationEnvelope(sourceAccountId: s7ValidAccount,
+                                                    body: try StellarTest.paymentBody(to: s7ValidAccount, asset: asset),
+                                                    seqNum: seqNum)
+        }
+        let invalid = [try payment(try StellarTest.alphanum4([0, 0, 0, 0], issuer: s7ValidAccount)),
+                       try payment(.native, seqNum: Int64.min)]
+        for xdr in invalid {
+            let uri = "web+stellar:tx?xdr=\(encoded(xdr))"
+            let result = Sep7.isValidSep7Url(uri: uri)
+            XCTAssertFalse(result.result)
+            XCTAssertEqual("Invalid 'xdr' parameter value", result.reason)
+            XCTAssertThrowsError(try Sep7.parseSep7Uri(uri: uri)) { error in
+                guard case ValidationError.invalidArgument(let message) = error else {
+                    return XCTFail("unexpected error: \(error)")
+                }
+                XCTAssertEqual("Invalid url. Reason: Invalid 'xdr' parameter value", message)
+            }
+        }
+
+        let usd = try payment(try StellarTest.alphanum4(Array("USD".utf8) + [0], issuer: s7ValidAccount))
+        XCTAssertTrue(Sep7.isValidSep7Url(uri: "web+stellar:tx?xdr=\(encoded(usd))").result)
+    }
+
     func testTxUnsupportedDestinationParameter() {
         let uri = "web+stellar:tx?xdr=\(encoded(s7ClassicTxXdr))&destination=\(s7ValidAccount)"
         let result = Sep7.isValidSep7Url(uri: uri)
