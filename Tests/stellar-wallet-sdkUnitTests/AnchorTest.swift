@@ -158,4 +158,34 @@ final class AnchorTest: XCTestCase {
         XCTAssertNil(services.sep24)
         XCTAssertNil(services.sep31)
     }
+
+    // MARK: - stellar.toml size limit
+
+    /// Returns a stellar.toml with the signing key `AnchorTestUtils.serverAccountId`, padded with
+    /// an ASCII comment line to exactly `size` bytes.
+    private func paddedToml(size: Int) -> String {
+        let document = "VERSION=\"2.0.0\"\nNETWORK_PASSPHRASE=\"Test SDF Network ; September 2015\"\n"
+            + "SIGNING_KEY=\"\(AnchorTestUtils.serverAccountId)\"\n"
+        return document + "#" + String(repeating: "a", count: size - document.utf8.count - 2) + "\n"
+    }
+
+    func testInfoLoadsTomlUpToTheSep1SizeLimit() async throws {
+        let atLimit = paddedToml(size: 102_400)
+        let aboveLimit = paddedToml(size: 102_401)
+        XCTAssertEqual(102_400, atLimit.utf8.count)
+        XCTAssertEqual(102_401, aboveLimit.utf8.count)
+        ServerMock.add(mock: RequestMock(host: "limit.anchortest.com", path: "/.well-known/stellar.toml",
+                                         httpMethod: "GET") { _, _ in atLimit })
+        ServerMock.add(mock: RequestMock(host: "oversized.anchortest.com", path: "/.well-known/stellar.toml",
+                                         httpMethod: "GET") { _, _ in aboveLimit })
+
+        let info = try await wallet.anchor(homeDomain: "limit.anchortest.com").info
+        XCTAssertEqual(AnchorTestUtils.serverAccountId, info.signingKey)
+        do {
+            _ = try await wallet.anchor(homeDomain: "oversized.anchortest.com").info
+            XCTFail("expected TomlFileError.invalidToml for a stellar.toml of 102,401 bytes")
+        } catch TomlFileError.invalidToml {
+            // expected
+        }
+    }
 }

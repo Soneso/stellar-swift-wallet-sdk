@@ -97,6 +97,6 @@ The SDK implements the following Stellar Ecosystem Proposals:
 
 ## Dependencies
 
-- **stellarsdk**: The underlying iOS Stellar SDK (v3.13.0+, Protocol 29)
+- **stellarsdk**: The underlying iOS Stellar SDK (v3.14.0+, Protocol 30)
 - **Swift 6.0+**: Minimum Swift version requirement
 - **Platform Support**: iOS 15+, macOS 12+
