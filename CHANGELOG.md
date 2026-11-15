@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.9 - 2026-11-15
+
+### Changed
+- The wallet depends on `stellar-ios-mac-sdk` 3.15.0, which refuses a secret seed given as an account id, pool id, or transaction hash in its Horizon requests, including those made through `Stellar.server`.
+
+### Security
+- `AccountService.accountExists`, `AccountService.getInfo`, `Stellar.fundTestNetAccount`, `Stellar.findStrictSendPathForDestinationAddress`, and `Stellar.findStrictReceivePathForSourceAddress` refuse an address that starts with `S` or `s`, as a secret seed does, with a `HorizonRequestError.badRequest` that names the kind of value, never the value, and send no request. In 0.9.8 the value went into the request URL.
+
 ## 0.9.8 - 2026-10-25
 
 ### Changed

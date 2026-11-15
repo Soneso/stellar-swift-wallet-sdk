@@ -1266,6 +1266,48 @@ final class StellarTest: XCTestCase {
         }
     }
 
+    // MARK: - Secret seed arguments
+
+    func testHorizonCallsRefuseSecretSeedBeforeAnyRequest() async throws {
+        ServerMock.removeAll()
+        var requestCount = 0
+        ServerMock.add(mock: RequestMock(host: StellarTest.horizonHost, path: "*", httpMethod: "GET") { _, _ in
+            requestCount += 1
+            return nil
+        })
+        let seed = sourceKp.secretKey
+        let secretSeed = "a secret seed (S...)"
+        let calls: [(String, () async throws -> Void)] = [
+            ("accountId is \(secretSeed)", {
+                _ = try await self.wallet.stellar.account.accountExists(accountAddress: seed)
+            }),
+            ("accountId is a value starting with S (not shown, it may be a secret seed)", {
+                _ = try await self.wallet.stellar.account.getInfo(accountAddress: seed.lowercased())
+            }),
+            ("accountId is \(secretSeed)", {
+                try await self.wallet.stellar.fundTestNetAccount(address: seed)
+            }),
+            ("destinationAccount is \(secretSeed)", {
+                _ = try await self.wallet.stellar.findStrictSendPathForDestinationAddress(
+                    destinationAddress: seed, sourceAssetId: NativeAssetId(), sourceAmount: "100")
+            }),
+            ("sourceAccount is \(secretSeed)", {
+                _ = try await self.wallet.stellar.findStrictReceivePathForSourceAddress(
+                    sourceAddress: seed, destinationAssetId: self.usdc, destinationAmount: "50")
+            }),
+        ]
+        for (refusal, call) in calls {
+            do {
+                try await call()
+                XCTFail("expected HorizonRequestError.badRequest: \(refusal)")
+            } catch HorizonRequestError.badRequest(let message, let errorResponse) {
+                XCTAssertEqual("\(refusal); the request is not sent", message)
+                XCTAssertNil(errorResponse)
+            }
+        }
+        XCTAssertEqual(0, requestCount)
+    }
+
     func testPaymentPathInitStoresValues() throws {
         // Direct construction of the public PaymentPath model.
         let eur = try IssuedAssetId(code: "EUR", issuer: issuerKp.address)
