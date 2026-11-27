@@ -119,6 +119,12 @@ public class CommonTxBuilder {
         operations.append(op)
     }
 
+    /// Builds the transaction.
+    ///
+    /// Throws `ValidationError.invalidArgument` if no operation was added, or if the transaction cannot be
+    /// encoded because a value is over its XDR limit, such as a text memo over 28 bytes. A refused build
+    /// leaves the sequence number of the source account unchanged.
+    ///
     public func build() throws ->stellarsdk.Transaction
     {
         if(operations.count == 0) {
@@ -129,12 +135,35 @@ public class CommonTxBuilder {
             preconditions = TransactionPreconditions(timeBounds: tb)
         }
         
-        return try! Transaction(
+        let transaction = try! Transaction(
             sourceAccount: sourceAccount,
             operations: operations,
             memo: memo,
             preconditions: preconditions,
             maxOperationFee: baseFee ?? 100)
+        do {
+            try requireEncodable(transaction.encodedEnvelope)
+        } catch {
+            // The initializer has incremented the source account's sequence number; a refused build
+            // gives it back, so that the next build uses it.
+            sourceAccount.decrementSequenceNumber()
+            throw error
+        }
+        return transaction
+    }
+}
+
+/// Encodes a transaction once and throws `ValidationError.invalidArgument` with the SDK's reason if it
+/// cannot be encoded.
+///
+/// The SDK creates a transaction without encoding it, while signing and submitting encode it and refuse
+/// a value over its XDR limit. The wallet's `sign` functions do not throw, so `build()` and
+/// `Stellar.makeFeeBump` check the transaction when they create it.
+internal func requireEncodable(_ encode: () throws -> String) throws {
+    do {
+        _ = try encode()
+    } catch StellarSDKError.xdrEncodingError(let reason), StellarSDKError.invalidArgument(let reason) {
+        throw ValidationError.invalidArgument(message: "The transaction cannot be encoded: \(reason)")
     }
 }
 

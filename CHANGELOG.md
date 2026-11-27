@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.9.10 - 2026-11-27
+
+### Changed
+- The wallet depends on `stellar-ios-mac-sdk` 3.17.0, which keeps decoded transactions as written and refuses to encode a value over its XDR limit.
+
+### Fixed
+- `TxBuilder.build()` throws `ValidationError.invalidArgument` with the SDK's reason for a value over its XDR limit, such as a text memo over 28 bytes, and leaves the source account's sequence number unchanged. `Stellar.makeFeeBump` throws the same for such an inner transaction. With `stellar-ios-mac-sdk` 3.17.0, signing a transaction that holds such a value stops the app if it was created without these two functions or changed after them.
+- `Stellar.decodeTransaction` keeps a V0 envelope as V0 and keeps as written a fee not divisible by the operation count, a signer weight over 255, and extended preconditions that set nothing beyond time bounds. The inner transaction of a fee bump keeps the same values; in 0.9.9 `toEnvelopeXdrBase64()` returned all such envelopes changed.
+- Envelopes with an inflation operation or a text memo that is not valid UTF-8 decode with `Stellar.decodeTransaction` and pass the SEP-7 `xdr` check. In 0.9.9 `decodeTransaction` returned `.invalidXdrErr` for them and the check reported "Invalid 'xdr' parameter value". Text memos, contract strings, and function names keep their bytes, other XDR strings keep a leading byte order mark, and transactions from `Stellar.server` read a text memo from `memo_bytes`.
+- `Stellar.decodeTransaction` returns `.invalidXdrErr` and the SEP-7 `xdr` check fails for a non-zero padding byte, an optional-value flag other than 0 or 1, or a value over its maximum length. In 0.9.9 an envelope with such padding decoded.
+- `Sep10.authenticate` throws `GetJWTTokenError.validationErrorError(.invalidMemoType)` for a challenge with a text memo that is not valid UTF-8 and accepts the server signature of a V0 challenge with more than one operation. In 0.9.9 the first threw `.parsingError`, and the second failed with `.invalidSignature` when its fee was not zero.
+
 ## 0.9.9 - 2026-11-15
 
 ### Changed
