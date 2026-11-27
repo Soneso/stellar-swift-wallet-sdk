@@ -170,18 +170,23 @@ public class Stellar {
     ///   - transaction: The transaction for which fee should be paid (inner transaction).
     ///   - baseFee: The base fee for the fee bump transaction. Must be more then the min. base fee (100) and more than the inner transaction base fee.
     ///
-    /// Throws a validation error (ValidationError.invalidArgument) if the given base fee is lower then the min base fee (100) or lower then the inner transaction base fee.
+    /// Throws a validation error (ValidationError.invalidArgument) if the given base fee is lower then the min base fee (100) or lower then the inner transaction base fee,
+    /// or if the fee bump transaction cannot be encoded because a value of the inner transaction is over its XDR limit, such as a text memo over 28 bytes.
     ///
     public func makeFeeBump(feeAddress: AccountKeyPair, transaction: stellarsdk.Transaction, baseFee:UInt32? = nil) throws -> stellarsdk.FeeBumpTransaction {
         let txBaseFee = baseFee ?? config.stellar.baseFee
         let account = try! MuxedAccount(accountId: feeAddress.address) // this only throws if address is invalid and it can not happen here.
+        let feeBump: stellarsdk.FeeBumpTransaction
         do {
             let fee = UInt64(txBaseFee * UInt32(transaction.operations.count + 1))
-            return try stellarsdk.FeeBumpTransaction(sourceAccount:account, fee: fee, innerTransaction: transaction)
+            feeBump = try stellarsdk.FeeBumpTransaction(sourceAccount:account, fee: fee, innerTransaction: transaction)
         } catch {
             // FeeBumpTransactionError.feeSmallerThanBaseFee or FeeBumpTransactionError.feeSmallerThanInnerTransactionFee
             throw ValidationError.invalidArgument(message: error.localizedDescription)
         }
+        // An inner transaction built without `TxBuilder.build()` has not been checked.
+        try requireEncodable(feeBump.encodedEnvelope)
+        return feeBump
     }
     
     /// Decode transaction or fee bump transaction from a xdr envelope base 64 string.

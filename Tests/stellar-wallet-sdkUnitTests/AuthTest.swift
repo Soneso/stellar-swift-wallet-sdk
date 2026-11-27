@@ -655,12 +655,13 @@ class AuthTestWebAuthChallengeResponseMock: ResponsesMock {
                                                                maxTime: UInt64(Date().timeIntervalSince1970 - 400)))
     }
     
+    /// The SEP-10 nonce is 48 random bytes, 64 bytes in base64.
     func getValidFirstManageDataOp (accountId: String) -> ManageDataOperation {
-        return ManageDataOperation(sourceAccountId: accountId, name: "\(AuthTestUtils.anchorDomain) auth", data: generateNonce(length: 64)?.data(using: .utf8))
+        return ManageDataOperation(sourceAccountId: accountId, name: "\(AuthTestUtils.anchorDomain) auth", data: generateNonce(length: 48)?.data(using: .utf8))
     }
     
     func getInvalidHomeDomainFirstOp (accountId: String) -> ManageDataOperation {
-        return ManageDataOperation(sourceAccountId: accountId, name: "fake.com auth", data: generateNonce(length: 64)?.data(using: .utf8))
+        return ManageDataOperation(sourceAccountId: accountId, name: "fake.com auth", data: generateNonce(length: 48)?.data(using: .utf8))
     }
     
     func getValidSecondManageDataOp () -> ManageDataOperation {

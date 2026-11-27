@@ -235,6 +235,36 @@ final class StellarTest: XCTestCase {
         }
     }
 
+    func testBuildRefusesMemoOverXdrLimit() async throws {
+        // `Memo.text` and `Memo.hash` hold values of any length; XDR allows 28 bytes of text and 32 bytes of hash.
+        let maximum = try (await sourceTxBuilder(memo: .text(String(repeating: "a", count: 28))))
+            .transfer(destinationAddress: destinationKp.address, assetId: NativeAssetId(), amount: Decimal(1))
+        XCTAssertNoThrow(try maximum.build())
+        let refused: [(stellarsdk.Memo, String)] = [
+            (.text(String(repeating: "a", count: 29)), "XDR string length 29 exceeds the maximum of 28"),
+            (.hash(Data(count: 33)), "expected 32 bytes, got 33"),
+        ]
+        for (memo, reason) in refused {
+            let builder = try (await sourceTxBuilder(memo: memo))
+                .transfer(destinationAddress: destinationKp.address, assetId: NativeAssetId(), amount: Decimal(1))
+            XCTAssertThrowsError(try builder.build()) { error in
+                guard case ValidationError.invalidArgument(let message) = error else {
+                    return XCTFail("expected ValidationError.invalidArgument, got \(error)")
+                }
+                XCTAssertEqual("The transaction cannot be encoded: \(reason)", message)
+            }
+        }
+    }
+
+    func testRefusedBuildKeepsTheSequenceNumber() async throws {
+        let builder = try (await sourceTxBuilder(memo: .text(String(repeating: "a", count: 29))))
+            .transfer(destinationAddress: destinationKp.address, assetId: NativeAssetId(), amount: Decimal(1))
+        let sequenceNumber = builder.sourceAccount.sequenceNumber
+        XCTAssertThrowsError(try builder.build())
+        let tx = try builder.setMemo(memo: .text("corrected")).build()
+        XCTAssertEqual(sequenceNumber + 1, tx.transactionXDR.seqNum)
+    }
+
     func testBuildTransactionUsesIncrementedSequenceAndFee() async throws {
         let tx = try (await sourceTxBuilder(baseFee: 200))
             .createAccount(newAccount: destinationKp, startingBalance: Decimal(5))
@@ -804,6 +834,21 @@ final class StellarTest: XCTestCase {
         }
     }
 
+    func testMakeFeeBumpRefusesInnerTransactionOverXdrLimit() async throws {
+        let inner = try (await sourceTxBuilder())
+            .transfer(destinationAddress: destinationKp.address, assetId: NativeAssetId(), amount: Decimal(1))
+            .build()
+        // A memo set after `build()` is not checked by it.
+        inner.setMemo(memo: .text(String(repeating: "a", count: 29)))
+        let feeAccount = wallet.stellar.account.createKeyPair()
+        XCTAssertThrowsError(try wallet.stellar.makeFeeBump(feeAddress: feeAccount, transaction: inner, baseFee: 200)) { error in
+            guard case ValidationError.invalidArgument(let message) = error else {
+                return XCTFail("expected ValidationError.invalidArgument, got \(error)")
+            }
+            XCTAssertEqual("The transaction cannot be encoded: XDR string length 29 exceeds the maximum of 28", message)
+        }
+    }
+
     func testSignFeeBumpTransaction() async throws {
         let inner = try (await sourceTxBuilder())
             .transfer(destinationAddress: destinationKp.address, assetId: NativeAssetId(), amount: Decimal(1))
@@ -986,6 +1031,22 @@ final class StellarTest: XCTestCase {
                                        asset: asset, amount: 100))
     }
 
+    /// Returns a base64 v1 envelope with one native payment and a text memo of three bytes, where
+    /// `memoBytes` holds the three text bytes and the padding byte. The bytes are set after encoding,
+    /// because the SDK encodes text from a `String` with zero padding.
+    static func textMemoEnvelope(sourceAccountId: String, destination: String, memoBytes: [UInt8]) throws -> String {
+        let tx = TransactionXDR(sourceAccount: try KeyPair(accountId: sourceAccountId).publicKey, seqNum: 1, cond: .none,
+                                memo: Memo.text("abc").toXDR(),
+                                operations: [OperationXDR(body: try paymentBody(to: destination, asset: .native))])
+        var bytes = [UInt8](try XCTUnwrap(Data(base64Encoded: try tx.encodedEnvelope())))
+        // Envelope type 4, source account 36, fee 4, sequence number 8, precondition type 4, memo type 4,
+        // text length 4: the text starts at byte 64.
+        let textOffset = 64
+        XCTAssertEqual(Array("abc".utf8) + [0], Array(bytes[textOffset..<(textOffset + 4)]))
+        bytes.replaceSubrange(textOffset..<(textOffset + 4), with: memoBytes)
+        return Data(bytes).base64EncodedString()
+    }
+
     /// Returns an `alphanum4` asset of `issuerAccountId` with the raw code bytes `code`.
     static func alphanum4(_ code: [UInt8], issuer issuerAccountId: String) throws -> AssetXDR {
         .alphanum4(Alpha4XDR(assetCode: WrappedData4(Data(code)), issuer: try KeyPair(accountId: issuerAccountId).publicKey))
@@ -1063,6 +1124,59 @@ final class StellarTest: XCTestCase {
             return XCTFail("expected the sequence number 42 to decode")
         }
         XCTAssertEqual(42, tx.sourceAccount.sequenceNumber)
+    }
+
+    func testDecodeKeepsTheEnvelopeBytes() throws {
+        let source = sourceKp.keyPair.publicKey
+        let payment = OperationXDR(body: try Self.paymentBody(to: destinationKp.address, asset: .native))
+        func v1(_ operations: [OperationXDR], cond: PreconditionsXDR = .none, fee: UInt32? = nil) -> TransactionV1EnvelopeXDR {
+            var tx = TransactionXDR(sourceAccount: source, seqNum: 1, cond: cond, memo: .none, operations: operations)
+            if let fee = fee { tx.fee = fee }
+            return TransactionV1EnvelopeXDR(tx: tx, signatures: [])
+        }
+        func base64(_ envelope: TransactionEnvelopeXDR) throws -> String {
+            Data(try XDREncoder.encode(envelope)).base64EncodedString()
+        }
+        let fee301 = v1([payment, payment], fee: 301)
+        let signer = SignerKeyXDR.ed25519(WrappedData32(Data(destinationKp.keyPair.publicKey.bytes)))
+        let weight300 = try SetOptionsOperation(sourceAccountId: nil, signer: signer, signerWeight: 300).toXDR()
+        let precondV2 = PreconditionsXDR.v2(PreconditionsV2XDR(timeBounds: TimeBoundsXDR(minTime: 0, maxTime: 0),
+                                                               minSeqAge: 0, minSeqLedgerGap: 0, extraSigners: []))
+        let v0 = TransactionV0XDR(sourceAccount: source, seqNum: 1, timeBounds: nil, memo: .none, operations: [payment, payment])
+        let envelopes = [
+            ("a V0 envelope with two operations", try base64(.v0(TransactionV0EnvelopeXDR(tx: v0, signatures: [])))),
+            ("the fee 301 for two operations", try base64(.v1(fee301))),
+            ("the signer weight 300", try base64(.v1(v1([weight300])))),
+            ("PRECOND_V2 with default fields", try base64(.v1(v1([payment], cond: precondV2)))),
+            ("an inflation operation", try base64(.v1(v1([OperationXDR(body: .inflation)])))),
+            ("a fee bump of the fee 301 for two operations",
+             try FeeBumpTransactionXDR(sourceAccount: .ed25519(destinationKp.keyPair.publicKey.bytes), innerTx: .v1(fee301), fee: 1000).encodedEnvelope()),
+        ]
+        for (name, xdr) in envelopes {
+            switch wallet.stellar.decodeTransaction(xdr: xdr) {
+            case .transaction(let tx): XCTAssertEqual(xdr, tx.toEnvelopeXdrBase64(), name)
+            case .feeBumpTransaction(let feeBump): XCTAssertEqual(xdr, feeBump.toEnvelopeXdrBase64(), name)
+            case .invalidXdrErr: XCTFail("expected \(name) to decode")
+            }
+        }
+    }
+
+    func testDecodeKeepsTextMemoBytesAndRefusesNonZeroPadding() throws {
+        func envelope(_ memoBytes: [UInt8]) throws -> String {
+            try Self.textMemoEnvelope(sourceAccountId: sourceKp.address, destination: destinationKp.address, memoBytes: memoBytes)
+        }
+        // C3 28 is not valid UTF-8; EF BB BF is the byte order mark.
+        for memoBytes: [UInt8] in [[0xC3, 0x28, 0x41, 0], [0xEF, 0xBB, 0xBF, 0]] {
+            let xdr = try envelope(memoBytes)
+            guard case .transaction(let tx) = wallet.stellar.decodeTransaction(xdr: xdr) else {
+                XCTFail("expected the memo bytes \(memoBytes) to decode")
+                continue
+            }
+            XCTAssertEqual(xdr, tx.toEnvelopeXdrBase64())
+        }
+        guard case .invalidXdrErr = wallet.stellar.decodeTransaction(xdr: try envelope(Array("abc".utf8) + [1])) else {
+            return XCTFail("expected invalidXdrErr for a padding byte that is not zero")
+        }
     }
 
     func testTransactionEnvelopeRoundTrip() async throws {
